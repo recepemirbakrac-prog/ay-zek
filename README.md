@@ -1,12 +1,12 @@
 # Ay Zek
 
-Türkçe yapay zekâ sohbet uygulaması. Next.js, Vercel AI SDK ve Vercel AI Gateway ile oluşturulmuştur.
+Türkçe yapay zekâ sohbet uygulaması. Next.js, Vercel AI SDK ve Vercel AI Gateway kullanır.
 
-## Geliştirme
+## Başlatma
 
 ```bash
 npm install
 npm run dev
 ```
 
-Vercel üzerinde yayınlamak için projeyi GitHub deposuna bağlayın. Sohbet API'si Vercel AI Gateway üzerinden `openai/gpt-4.1-mini` modelini kullanır.
+Vercel AI Gateway erişimi, Vercel projesinde yapılandırılmalıdır.
