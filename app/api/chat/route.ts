@@ -13,11 +13,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Bir mesaj yazmalısın." }, { status: 400 });
     }
 
-    const apiKey = process.env.AI_GATEWAY_API_KEY;
+    // Vercel injects an OIDC token into deployed functions. An API key remains
+    // supported for local development or deployments outside Vercel.
+    const gatewayToken = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
     const model = process.env.AI_GATEWAY_MODEL;
-    if (!apiKey || !model) {
+    if (!gatewayToken || !model) {
       return NextResponse.json({
-        error: "AI bağlantısı henüz yapılandırılmadı. Vercel projesine AI_GATEWAY_API_KEY ve AI_GATEWAY_MODEL ortam değişkenlerini ekleyerek asistanı etkinleştirebilirsin."
+        error: "AI bağlantısı henüz yapılandırılmadı. Vercel dağıtımında OIDC kimlik doğrulaması ve AI_GATEWAY_MODEL ayarını kontrol et."
       }, { status: 503 });
     }
 
@@ -26,18 +28,18 @@ export async function POST(request: Request) {
       "Sen Ay zek adlı Türkçe konuşan, pratik ve güvenilir bir işletme asistanısın.",
       "Yanıtlarını açık, kısa ve uygulanabilir ver. Bilmediğin işletme verilerini uydurma.",
       "Ödeme, e-posta gönderme, kayıt silme veya dış sistemlerde işlem yapma yeteneğin yoksa bunu açıkça söyle; yapmış gibi davranma.",
-      pluginContext ? "Etkin eklenti bağlamı (yalnızca mevcut özellikler):\\n" + pluginContext : "Şu anda harici eklenti etkin değil."
-    ].join("\\n\\n");
+      pluginContext ? "Etkin eklenti bağlamı (yalnızca mevcut özellikler):\n" + pluginContext : "Şu anda harici eklenti etkin değil."
+    ].join("\n\n");
 
     const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+      headers: { Authorization: "Bearer " + gatewayToken, "Content-Type": "application/json" },
       body: JSON.stringify({ model, messages: [{ role: "system", content: system }, ...messages.slice(-12)], temperature: 0.4 }),
     });
     if (!response.ok) {
       const detail = await response.text();
       console.error("AI Gateway error", response.status, detail.slice(0, 500));
-      return NextResponse.json({ error: "AI servisine şu anda ulaşılamıyor. Gateway ayarlarını kontrol et." }, { status: 502 });
+      return NextResponse.json({ error: "AI servisine şu anda ulaşılamıyor. Gateway kimlik doğrulamasını ve kredi/bütçe durumunu kontrol et." }, { status: 502 });
     }
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
