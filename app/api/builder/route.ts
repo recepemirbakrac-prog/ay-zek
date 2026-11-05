@@ -41,6 +41,9 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const detail = await response.text();
       console.error("Builder AI Gateway error", response.status, detail.slice(0, 400));
+      if (response.status === 403) {
+        return NextResponse.json({ error: "Vercel AI Gateway kullanımı için hesabına geçerli bir ödeme yöntemi eklemen gerekiyor. Vercel Dashboard > AI Gateway > Billing bölümünü kontrol et." }, { status: 503 });
+      }
       return NextResponse.json({ error: "Uygulama oluşturulamadı. AI Gateway bağlantısını kontrol edip tekrar dene." }, { status: 502 });
     }
     const data = await response.json();
