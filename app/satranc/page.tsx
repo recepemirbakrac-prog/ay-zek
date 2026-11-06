@@ -48,7 +48,8 @@ function computerMove(position: Chess, level: string) {
   }
   return choices[Math.floor(Math.random() * choices.length)] || moves[0];
 }
-\nexport default function ChessGame() {
+
+export default function ChessGame() {
   const game = useRef(new Chess());
   const [fen, setFen] = useState(game.current.fen());
   const [selected, setSelected] = useState<Square | null>(null);
