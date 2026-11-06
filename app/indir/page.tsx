@@ -3,14 +3,51 @@
 import { useMemo, useState } from "react";
 
 const items = [
-  { name:"Firefox", platform:"Android", category:"Tarayıcı", desc:"Gizlilik odaklı, hızlı web tarayıcısı.", icon:"🦊", url:"https://www.mozilla.org/firefox/browsers/mobile/android/" },
+  // Android
+  { name:"Firefox", platform:"Android", category:"Tarayıcı", desc:"Gizlilik odaklı web tarayıcısı.", icon:"🦊", url:"https://www.mozilla.org/firefox/browsers/mobile/android/" },
+  { name:"Chrome", platform:"Android", category:"Tarayıcı", desc:"Google'ın hızlı web tarayıcısı.", icon:"🌐", url:"https://play.google.com/store/apps/details?id=com.android.chrome" },
+  { name:"Brave", platform:"Android", category:"Tarayıcı", desc:"Reklam ve izleyici engelleme özellikli tarayıcı.", icon:"🦁", url:"https://brave.com/download/" },
   { name:"VLC", platform:"Android", category:"Medya", desc:"Video ve ses dosyalarını oynatır.", icon:"▶", url:"https://www.videolan.org/vlc/download-android.html" },
-  { name:"F-Droid", platform:"Android", category:"Mağaza", desc:"Açık kaynak Android uygulama kataloğu.", icon:"FD", url:"https://f-droid.org/" },
-  { name:"Signal", platform:"Android", category:"İletişim", desc:"Güvenli ve şifreli mesajlaşma.", icon:"✳", url:"https://signal.org/android/apk/" },
-  { name:"Firefox", platform:"Windows", category:"Tarayıcı", desc:"Gizlilik araçlarına sahip modern tarayıcı.", icon:"🦊", url:"https://www.mozilla.org/firefox/new/" },
+  { name:"Spotify", platform:"Android", category:"Müzik", desc:"Müzik ve podcast dinleme uygulaması.", icon:"♫", url:"https://www.spotify.com/download/android/" },
+  { name:"Signal", platform:"Android", category:"İletişim", desc:"Uçtan uca şifreli mesajlaşma.", icon:"✳", url:"https://signal.org/android/apk/" },
+  { name:"Telegram", platform:"Android", category:"İletişim", desc:"Bulut tabanlı mesajlaşma uygulaması.", icon:"➤", url:"https://telegram.org/android" },
+  { name:"WhatsApp", platform:"Android", category:"İletişim", desc:"Mesajlaşma ve sesli/görüntülü arama.", icon:"◉", url:"https://www.whatsapp.com/android" },
+  { name:"F-Droid", platform:"Android", category:"Mağaza", desc:"Özgür ve açık kaynak uygulama kataloğu.", icon:"FD", url:"https://f-droid.org/" },
+  { name:"Bitwarden", platform:"Android", category:"Güvenlik", desc:"Açık kaynak parola yöneticisi.", icon:"🔐", url:"https://bitwarden.com/download/" },
+  { name:"Proton Mail", platform:"Android", category:"İletişim", desc:"Gizlilik odaklı e-posta uygulaması.", icon:"✉", url:"https://proton.me/mail/download" },
+  { name:"Google Maps", platform:"Android", category:"Harita", desc:"Navigasyon ve yer keşfi.", icon:"📍", url:"https://play.google.com/store/apps/details?id=com.google.android.apps.maps" },
+  { name:"Google Drive", platform:"Android", category:"Üretkenlik", desc:"Dosyalarını bulutta sakla ve paylaş.", icon:"☁", url:"https://www.google.com/drive/download/" },
+  { name:"Notion", platform:"Android", category:"Üretkenlik", desc:"Not, belge ve görev çalışma alanı.", icon:"▤", url:"https://www.notion.com/mobile" },
+  { name:"Canva", platform:"Android", category:"Tasarım", desc:"Grafik ve sosyal medya tasarımları.", icon:"✦", url:"https://www.canva.com/download/android/" },
+  { name:"Snapseed", platform:"Android", category:"Tasarım", desc:"Fotoğraf düzenleme araçları.", icon:"📷", url:"https://play.google.com/store/apps/details?id=com.niksoftware.snapseed" },
+  { name:"Termux", platform:"Android", category:"Geliştirici", desc:"Android üzerinde terminal ortamı.", icon:">_", url:"https://termux.dev/" },
+  { name:"Proton VPN", platform:"Android", category:"Güvenlik", desc:"Gizlilik odaklı VPN hizmeti.", icon:"🛡", url:"https://protonvpn.com/download-android" },
+  // Windows
+  { name:"Firefox", platform:"Windows", category:"Tarayıcı", desc:"Gizlilik araçlarına sahip web tarayıcısı.", icon:"🦊", url:"https://www.mozilla.org/firefox/new/" },
+  { name:"Google Chrome", platform:"Windows", category:"Tarayıcı", desc:"Hızlı ve yaygın web tarayıcısı.", icon:"🌐", url:"https://www.google.com/chrome/" },
+  { name:"Brave", platform:"Windows", category:"Tarayıcı", desc:"Reklam engelleme özellikli tarayıcı.", icon:"🦁", url:"https://brave.com/download/" },
   { name:"VLC Media Player", platform:"Windows", category:"Medya", desc:"Ücretsiz video ve müzik oynatıcı.", icon:"▶", url:"https://www.videolan.org/vlc/" },
+  { name:"Spotify", platform:"Windows", category:"Müzik", desc:"Müzik ve podcast uygulaması.", icon:"♫", url:"https://www.spotify.com/download/windows/" },
+  { name:"Audacity", platform:"Windows", category:"Medya", desc:"Ses kaydı ve düzenleme yazılımı.", icon:"🎙", url:"https://www.audacityteam.org/download/" },
+  { name:"OBS Studio", platform:"Windows", category:"Medya", desc:"Ekran kaydı ve canlı yayın yazılımı.", icon:"◉", url:"https://obsproject.com/download" },
   { name:"LibreOffice", platform:"Windows", category:"Ofis", desc:"Belge, tablo ve sunum hazırlama paketi.", icon:"▤", url:"https://www.libreoffice.org/download/download-libreoffice/" },
   { name:"7-Zip", platform:"Windows", category:"Araçlar", desc:"Dosyaları sıkıştırın ve arşivleri açın.", icon:"7z", url:"https://www.7-zip.org/download.html" },
+  { name:"GIMP", platform:"Windows", category:"Tasarım", desc:"Ücretsiz ve açık kaynak görsel düzenleyici.", icon:"🎨", url:"https://www.gimp.org/downloads/" },
+  { name:"Blender", platform:"Windows", category:"Tasarım", desc:"3B modelleme, animasyon ve render.", icon:"🧊", url:"https://www.blender.org/download/" },
+  { name:"ShareX", platform:"Windows", category:"Araçlar", desc:"Ekran görüntüsü ve ekran kaydı aracı.", icon:"✂", url:"https://getsharex.com/" },
+  { name:"Everything", platform:"Windows", category:"Araçlar", desc:"Windows için hızlı dosya arama.", icon:"⌕", url:"https://www.voidtools.com/downloads/" },
+  { name:"Bitwarden", platform:"Windows", category:"Güvenlik", desc:"Açık kaynak parola yöneticisi.", icon:"🔐", url:"https://bitwarden.com/download/" },
+  { name:"Proton VPN", platform:"Windows", category:"Güvenlik", desc:"Gizlilik odaklı VPN uygulaması.", icon:"🛡", url:"https://protonvpn.com/download-windows" },
+  { name:"Telegram Desktop", platform:"Windows", category:"İletişim", desc:"Masaüstü mesajlaşma uygulaması.", icon:"➤", url:"https://desktop.telegram.org/" },
+  { name:"WhatsApp", platform:"Windows", category:"İletişim", desc:"Masaüstü mesajlaşma ve arama.", icon:"◉", url:"https://www.whatsapp.com/download" },
+  { name:"Discord", platform:"Windows", category:"İletişim", desc:"Topluluklar için sesli ve yazılı sohbet.", icon:"☏", url:"https://discord.com/download" },
+  { name:"Visual Studio Code", platform:"Windows", category:"Geliştirici", desc:"Eklentili kod düzenleyici.", icon:"</>", url:"https://code.visualstudio.com/Download" },
+  { name:"GitHub Desktop", platform:"Windows", category:"Geliştirici", desc:"Git depolarını masaüstünden yönet.", icon:"⌘", url:"https://desktop.github.com/" },
+  { name:"Python", platform:"Windows", category:"Geliştirici", desc:"Programlama dili ve çalışma ortamı.", icon:"🐍", url:"https://www.python.org/downloads/windows/" },
+  { name:"Steam", platform:"Windows", category:"Oyun", desc:"PC oyunları mağazası ve kütüphanesi.", icon:"🎮", url:"https://store.steampowered.com/about/" },
+  { name:"Epic Games Launcher", platform:"Windows", category:"Oyun", desc:"Oyun mağazası ve başlatıcısı.", icon:"🎮", url:"https://store.epicgames.com/download" },
+  { name:"SumatraPDF", platform:"Windows", category:"Ofis", desc:"Hafif PDF ve e-kitap okuyucu.", icon:"📄", url:"https://www.sumatrapdfreader.org/download-free-pdf-viewer" },
+  { name:"KeePass", platform:"Windows", category:"Güvenlik", desc:"Yerel ve açık kaynak parola kasası.", icon:"🔑", url:"https://keepass.info/download.html" },
 ];
 
 export default function DownloadCenter() {
@@ -25,10 +62,10 @@ export default function DownloadCenter() {
 
   return <main className="hub">
     <nav><a className="logo" href="/"> <b>A</b> ay<span>zek</span></a><div><a href="#apps">Uygulamalar</a><a href="#safety">Güvenli indirme</a></div><small>✦ Ücretsiz katalog</small></nav>
-    <header><label>ANDROID & WINDOWS UYGULAMALARI</label><h1>İhtiyacın olan uygulama,<br/><em>tek bir yerde.</em></h1><p>Android ve Windows için sevdiğin uygulamaları keşfet, resmi kaynaklardan indir.</p><a className="cta" href="#apps">Uygulamaları keşfet ↓</a><aside><b>2</b> Platform <i/> <b>8</b> Öne çıkan uygulama <i/> <b>%100</b> Ücretsiz katalog</aside></header>
+    <header><label>ANDROID & WINDOWS UYGULAMALARI</label><h1>İhtiyacın olan uygulama,<br/><em>tek bir yerde.</em></h1><p>Android ve Windows için sevdiğin uygulamaları keşfet, resmi kaynaklardan indir.</p><a className="cta" href="#apps">Uygulamaları keşfet ↓</a><aside><b>2</b> Platform <i/> <b>{items.length}</b> Uygulama <i/> <b>%100</b> Ücretsiz katalog</aside></header>
     <section id="apps"><div className="heading"><div><label>KATALOĞU KEŞFET</label><h2>Uygulamalar</h2><p>Aradığını bul, resmi kaynaktan indir.</p></div><small>{visible.length} uygulama</small></div>
       <div className="tabs">{["Tümü","Android","Windows"].map(x=><button key={x} className={platform===x?"selected":""} onClick={()=>setPlatform(x)}>{x==="Android"?"◈ ":x==="Windows"?"⊞ ":"✦ "}{x}</button>)}</div>
-      <div className="filters"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="⌕  Uygulama ara..."/><select value={category} onChange={e=>setCategory(e.target.value)}>{["Tümü","Tarayıcı","Medya","Mağaza","İletişim","Ofis","Araçlar"].map(x=><option key={x}>{x}</option>)}</select></div>
+      <div className="filters"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="⌕  Uygulama ara..."/><select value={category} onChange={e=>setCategory(e.target.value)}>{["Tümü",...Array.from(new Set(items.map(x=>x.category)))].map(x=><option key={x}>{x}</option>)}</select></div>
       <div className="grid">{visible.map((x,i)=><article key={x.platform+x.name}><div className="cardtop"><b>{x.icon}</b><small>{x.platform==="Android"?"◈ Android":"⊞ Windows"}</small></div><label>{x.category}</label><h3>{x.name}</h3><p>{x.desc}</p><a href={x.url} target="_blank" rel="noopener noreferrer">Resmi indirme sayfası ↗</a></article>)}</div>
       {!visible.length&&<div className="empty">Sonuç bulunamadı. Aramanı veya filtrelerini değiştir.</div>}
     </section>
