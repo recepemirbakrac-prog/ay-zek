@@ -1,180 +1,67 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-type Tile = "grass" | "tree" | "rock" | "berry" | "water" | "wood" | "camp" | "shelter";
-type Cell = { type: Tile; id: number };
-const W = 15, H = 9;
-const initialMap: Cell[] = Array.from({ length: W * H }, (_, i) => {
-  const x = i % W, y = Math.floor(i / W);
-  if (x === 0 || y === 0 || x === W - 1 || y === H - 1) return { type: "tree", id: i };
-  if ((x * 7 + y * 11) % 17 === 0) return { type: "rock", id: i };
-  if ((x * 5 + y * 3) % 19 === 0) return { type: "berry", id: i };
-  if ((x * 13 + y * 7) % 29 === 0) return { type: "water", id: i };
-  if ((x * 3 + y * 5) % 13 === 0) return { type: "tree", id: i };
-  return { type: "grass", id: i };
-});
-const icons: Record<Tile, string> = { grass: "🌿", tree: "🌲", rock: "🪨", berry: "🫐", water: "💧", wood: "🪵", camp: "🔥", shelter: "🏕️" };
+type Resource = "wood" | "stone" | "berries" | "water";
+const slots = ["🪓","🪵","🪨","🫐","💧","🔥","🏕️","","",""];
 
 export default function SurvivalGame() {
-  const [map, setMap] = useState(initialMap);
-  const [player, setPlayer] = useState({ x: 7, y: 4 });
-  const [stats, setStats] = useState({ hp: 100, food: 90, water: 90, wood: 0, stone: 0, berries: 0 });
-  const [day, setDay] = useState(1);
-  const [hour, setHour] = useState(8);
-  const [message, setMessage] = useState("Ormanda uyandın. İlk işin yiyecek ve odun bulmak!");
-  const [gameOver, setGameOver] = useState(false);
-  const [won, setWon] = useState(false);
-  const [shelter, setShelter] = useState(false);
-  const [campfire, setCampfire] = useState(false);
-  const [started, setStarted] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-
-  const night = hour >= 20 || hour < 6;
-  const tileIndex = (x: number, y: number) => y * W + x;
-  const nearby = useMemo(() => map.filter(c => {
-    const x = c.id % W, y = Math.floor(c.id / W);
-    return Math.abs(x - player.x) + Math.abs(y - player.y) <= 1 && c.type !== "grass";
-  }), [map, player]);
-
-  const move = useCallback((dx: number, dy: number) => {
-    if (gameOver || won) return;
-    const nx = Math.max(1, Math.min(W - 2, player.x + dx));
-    const ny = Math.max(1, Math.min(H - 2, player.y + dy));
-    const cell = map[tileIndex(nx, ny)];
-    if (cell.type === "tree" || cell.type === "rock" || cell.type === "water") {
-      setMessage(cell.type === "water" ? "Su kenarındasın. Yaklaşmak için başka yönden dene." : "Yolun kapalı! Etrafından dolaş.");
-      return;
-    }
-    setPlayer({ x: nx, y: ny });
-    setStarted(true);
-  }, [gameOver, won, player, map]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      const dirs: Record<string, [number, number]> = { w: [0,-1], arrowup: [0,-1], s: [0,1], arrowdown: [0,1], a: [-1,0], arrowleft: [-1,0], d: [1,0], arrowright: [1,0] };
-      if (dirs[k]) { e.preventDefault(); move(...dirs[k]); }
-      if (k === "e") gather();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
-  useEffect(() => {
-    if (!started || gameOver || won) return;
-    const timer = window.setInterval(() => {
-      setHour(h => {
-        const next = (h + 1) % 24;
-        if (next === 0) setDay(d => d + 1);
-        return next;
-      });
-      setStats(s => {
-        const food = Math.max(0, s.food - 2);
-        const water = Math.max(0, s.water - 3);
-        const hp = Math.max(0, s.hp - (food === 0 || water === 0 ? 8 : night ? 1 : 0));
-        if (hp <= 0) setGameOver(true);
-        return { ...s, food, water, hp };
-      });
-    }, 9000);
-    return () => window.clearInterval(timer);
-  }, [started, gameOver, won, night]);
-
-  const gather = () => {
-    if (gameOver || won) return;
-    const target = nearby.find(c => ["tree", "rock", "berry", "water"].includes(c.type));
-    if (!target) { setMessage("Yakınında toplanacak kaynak yok. 🌲 Ağaç, 🪨 taş veya 🫐 yemiş ara."); return; }
-    if (target.type === "tree") {
-      setStats(s => ({ ...s, wood: s.wood + 3 }));
-      setMap(m => m.map(c => c.id === target.id ? { ...c, type: "wood" } : c));
-      setMessage("Ağaçtan 3 odun topladın. 🪵");
-    } else if (target.type === "rock") {
-      setStats(s => ({ ...s, stone: s.stone + 2 }));
-      setMap(m => m.map(c => c.id === target.id ? { ...c, type: "grass" } : c));
-      setMessage("Kayadan 2 taş çıkardın. 🪨");
-    } else if (target.type === "berry") {
-      setStats(s => ({ ...s, berries: s.berries + 2 }));
-      setMap(m => m.map(c => c.id === target.id ? { ...c, type: "grass" } : c));
-      setMessage("2 avuç yabani yemiş topladın. 🫐");
-    } else {
-      setStats(s => ({ ...s, water: Math.min(100, s.water + 35) }));
-      setMessage("Temiz su içtin. Susuzluğun azaldı. 💧");
-    }
-  };
-
-  const eat = () => {
-    if (stats.berries <= 0) { setMessage("Yiyeceğin yok. Önce yemiş topla!"); return; }
-    setStats(s => ({ ...s, berries: s.berries - 1, food: Math.min(100, s.food + 28) }));
-    setMessage("Yabani yemiş yedin. Açlığın azaldı.");
-  };
-  const craft = (kind: "fire" | "shelter") => {
-    if (kind === "fire") {
-      if (campfire) return setMessage("Zaten bir kamp ateşin var.");
-      if (stats.wood < 4 || stats.stone < 2) return setMessage("Kamp ateşi için 4 odun ve 2 taş gerekli.");
-      setStats(s => ({ ...s, wood: s.wood - 4, stone: s.stone - 2 }));
-      setCampfire(true); setMessage("Kamp ateşini kurdun! Gece daha güvendesin. 🔥");
-    } else {
-      if (shelter) return setMessage("Barınağın hazır.");
-      if (stats.wood < 8) return setMessage("Barınak için 8 odun gerekli.");
-      setStats(s => ({ ...s, wood: s.wood - 8 }));
-      setShelter(true); setMessage("Barınağını kurdun. Fırtınadan korunabilirsin. 🏕️");
-      setWon(true);
-    }
-  };
-  const restart = () => {
-    setMap(initialMap); setPlayer({ x: 7, y: 4 }); setStats({ hp: 100, food: 90, water: 90, wood: 0, stone: 0, berries: 0 });
-    setDay(1); setHour(8); setMessage("Ormanda uyandın. İlk işin yiyecek ve odun bulmak!");
-    setGameOver(false); setWon(false); setShelter(false); setCampfire(false); setStarted(false);
-  };
-
-  return (
-    <main className="survival">
-      <style jsx>{`
-        .survival{min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#244b3b 0%,#101c19 48%,#0b1210 100%);color:#f4f4e9;padding:28px 18px 44px;font-family:Arial,sans-serif}
-        .shell{max-width:1120px;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}
-        .brand{font-size:12px;letter-spacing:3px;color:#a8c7a9;font-weight:800}.brand span{color:#e8bd73}.top h1{font-size:clamp(27px,4vw,42px);margin:7px 0 5px;letter-spacing:-1.5px}.sub{color:#a4b6a5;font-size:13px;margin:0}
-        .daybox{border:1px solid #ffffff20;background:#ffffff0a;border-radius:14px;padding:12px 16px;text-align:right;min-width:110px}.daybox b{font-size:20px}.daybox small{display:block;color:#a8bba8;margin-top:4px}
-        .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin:18px 0}.stat{background:#ffffff0b;border:1px solid #ffffff14;border-radius:12px;padding:11px 12px}.stat label{display:block;color:#a7b8a5;font-size:10px;text-transform:uppercase;letter-spacing:1px}.stat b{font-size:17px;display:block;margin-top:6px}.bar{height:5px;background:#ffffff17;border-radius:9px;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;border-radius:9px;background:#83c58a}
-        .layout{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:15px}.panel{border:1px solid #ffffff1a;background:#111c18d9;border-radius:17px;padding:14px;box-shadow:0 18px 55px #0003}.maphead{display:flex;justify-content:space-between;align-items:center;padding:3px 3px 12px}.maphead b{font-size:13px}.maphead small{color:#9eaf9e;font-size:11px}
-        .map{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:3px;padding:8px;background:#14281c;border-radius:12px;border:1px solid #41604455;overflow:hidden}
-        .cell{aspect-ratio:1;display:grid;place-items:center;border-radius:5px;background:linear-gradient(145deg,#31583a,#27482f);font-size:clamp(12px,2.2vw,23px);position:relative;user-select:none}
-        .cell:nth-child(odd){background:linear-gradient(145deg,#355f3e,#294d33)}.cell.player{outline:2px solid #ffe18c;background:#9c793b;z-index:1;box-shadow:0 0 18px #ffda6b88}.cell.player:after{content:"🧍";font-size:clamp(15px,2.6vw,27px)}
-        .cell.tree{background:#1b3828}.cell.water{background:#23546a}.cell.rock{background:#47534a}.cell.berry{background:#345239}.cell.wood{background:#4a5438}
-        .controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}.dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,38px);gap:4px}.dpad button,.action{border:1px solid #ffffff20;background:#263c30;color:#f7f4df;border-radius:9px;cursor:pointer;font-weight:700}.dpad button{font-size:16px}.dpad button:active,.action:active{transform:scale(.96)}.up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}
-        .actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.action{padding:11px 13px;font-size:12px}.primary{background:#d6a75d;color:#1d241b;border:0}.side h3{font-size:14px;margin:2px 0 12px}.side section+section{border-top:1px solid #ffffff16;margin-top:15px;padding-top:14px}.craft{width:100%;display:flex;justify-content:space-between;gap:8px;text-align:left;margin:7px 0;padding:10px;border:1px solid #ffffff17;border-radius:10px;background:#ffffff08;color:#f3f0df;cursor:pointer}.craft small{color:#9db19d}.craft:disabled{opacity:.45;cursor:not-allowed}.note{margin-top:12px;padding:12px;border-radius:11px;background:#d4a75b16;border:1px solid #d4a75b33;color:#e9d7b4;font-size:12px;line-height:1.55;min-height:58px}.objective{font-size:12px;color:#b8c8b5;line-height:1.7}.objective b{color:#f3e6c8}.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:11px;color:#9fb19f;font-size:10px}.legend span{white-space:nowrap}.overlay{position:fixed;inset:0;background:#06100edb;display:grid;place-items:center;padding:20px;z-index:5}.modal{max-width:420px;text-align:center;padding:28px;border:1px solid #ffffff25;background:#14251d;border-radius:20px}.modal h2{font-size:28px;margin:5px 0 10px}.modal p{color:#bac9b9;line-height:1.7;font-size:13px}.modal button{padding:12px 22px;border:0;border-radius:10px;background:#d6a75d;font-weight:800;cursor:pointer}.help{color:#9eb29e;border:0;background:none;cursor:pointer;font-size:12px}@media(max-width:800px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.side section+section{border:0;margin:0;padding:0}.controls{align-items:flex-end}.actions{max-width:55%}}@media(max-width:480px){.survival{padding:18px 9px}.stats{gap:6px}.stat{padding:9px}.map{gap:2px;padding:5px}.cell{font-size:clamp(10px,3vw,17px)}.controls{flex-direction:column;align-items:center}.actions{max-width:none;justify-content:center}.side{display:block}.side section+section{border-top:1px solid #ffffff16;margin-top:15px;padding-top:14px}}
-      `}</style>
-      <div className="shell">
-        <header className="top"><div><div className="brand">AY ZEK <span>GAMES</span></div><h1>Vahşi Doğa <span style={{color:"#d8ad68"}}>Survival</span></h1><p className="sub">Doğaya karşı tek başınasın. Hayatta kalabilecek misin?</p></div><div className="daybox"><b>{night ? "🌙 Gece" : "☀️ Gündüz"}</b><small>Gün {day} · {String(hour).padStart(2,"0")}:00</small></div></header>
-        <div className="stats">
-          {([["❤️ Sağlık",stats.hp],["🍗 Açlık",stats.food],["💧 Susuzluk",stats.water]] as [string,number][]).map(([name,value])=><div className="stat" key={name}><label>{name}</label><b>{value}%</b><div className="bar"><i style={{width:value+"%",background:value<30?"#d66b5e":"#83c58a"}}/></div></div>)}
-          <div className="stat"><label>🪵 Odun</label><b>{stats.wood}</b></div><div className="stat"><label>🪨 Taş</label><b>{stats.stone}</b></div><div className="stat"><label>🫐 Yemiş</label><b>{stats.berries}</b></div>
-        </div>
-        <div className="layout">
-          <div className="panel">
-            <div className="maphead"><b>🌳 ORMAN HARİTASI</b><small>WASD / ok tuşları ile hareket et</small></div>
-            <div className="map" aria-label="Hayatta kalma oyun haritası">
-              {map.map(c=>{const x=c.id%W,y=Math.floor(c.id/W),isPlayer=player.x===x&&player.y===y;return <div key={c.id} className={`cell ${c.type} ${isPlayer?"player":""}`} title={c.type}>{isPlayer?"":icons[c.type]}</div>;})}
-            </div>
-            <div className="legend"><span>🌲 Ağaç</span><span>🪨 Taş</span><span>🫐 Yemiş</span><span>💧 Su</span><span>🧍 Sen</span></div>
-            <div className="controls">
-              <div className="dpad"><button className="up" onClick={()=>move(0,-1)}>▲</button><button className="left" onClick={()=>move(-1,0)}>◀</button><button className="down" onClick={()=>move(0,1)}>▼</button><button className="right" onClick={()=>move(1,0)}>▶</button></div>
-              <div className="actions"><button className="action primary" onClick={gather}>✋ Topla (E)</button><button className="action" onClick={eat}>🍇 Ye</button><button className="action" onClick={()=>setShowHelp(true)}>❔ Yardım</button></div>
-            </div>
-            <div className="note">📜 {message}</div>
-          </div>
-          <aside className="panel side">
-            <section><h3>🎯 Görev</h3><p className="objective">İlk gece gelmeden kaynaklarını topla, <b>kamp ateşi</b> kur ve kendine bir <b>barınak</b> inşa et. Barınak kurarsan kazanırsın!</p></section>
-            <section><h3>🛠️ Üretim</h3>
-              <button className="craft" onClick={()=>craft("fire")} disabled={campfire}><span>🔥 Kamp ateşi<small style={{display:"block"}}>4 odun + 2 taş</small></span><b>{campfire?"✓":"Üret"}</b></button>
-              <button className="craft" onClick={()=>craft("shelter")} disabled={shelter}><span>🏕️ Barınak<small style={{display:"block"}}>8 odun</small></span><b>{shelter?"✓":"Üret"}</b></button>
-            </section>
-            <section><h3>💡 Hayatta kalma ipuçları</h3><p className="objective">• Her adımda zaman ilerler.<br/>• Açlık ve susuzluk düzenli azalır.<br/>• Su kaynağına yaklaş ve topla.<br/>• Yemiş yiyerek açlığını gider.<br/>• Kaynakları toplamak için yanlarına git.</p></section>
-            <section><button className="craft" onClick={restart}><span>↻ Oyunu sıfırla</span><b>Yeniden başla</b></button></section>
-          </aside>
-        </div>
-      </div>
-      {showHelp&&<div className="overlay" onClick={()=>setShowHelp(false)}><div className="modal" onClick={e=>e.stopPropagation()}><h2>Nasıl oynanır?</h2><p>WASD veya yön tuşlarıyla ormanda dolaş. Kaynakların yanına gelince Topla düğmesine bas. Yemiş yiyerek açlığını, su kaynağından içerek susuzluğunu azalt. 4 odun ve 2 taşla ateş, 8 odunla barınak yap.</p><button onClick={()=>setShowHelp(false)}>Oyuna dön</button></div></div>}
-      {(gameOver||won)&&<div className="overlay"><div className="modal"><div style={{fontSize:44}}>{won?"🏆":"💀"}</div><h2>{won?"Hayatta kaldın!":"Oyun bitti"}</h2><p>{won?"Harika! Barınağını kurdun ve vahşi doğada güvenli bir yer edindin.":"Doğa kazandı... Daha iyi hazırlanıp yeniden dene."} {day}. güne ulaştın.</p><button onClick={restart}>Yeniden oyna</button></div></div>}
-    </main>
-  );
+  const [hp,setHp]=useState(100),[food,setFood]=useState(90),[water,setWater]=useState(90);
+  const [wood,setWood]=useState(0),[stone,setStone]=useState(0),[berries,setBerries]=useState(0);
+  const [day,setDay]=useState(1),[hour,setHour]=useState(8),[message,setMessage]=useState("Ormanda uyandın. Kaynak topla ve barınağını inşa et.");
+  const [started,setStarted]=useState(false),[dead,setDead]=useState(false),[won,setWon]=useState(false);
+  const [fire,setFire]=useState(false),[shelter,setShelter]=useState(false),[inventory,setInventory]=useState(false),[build,setBuild]=useState(false);
+  const [selected,setSelected]=useState(0),[x,setX]=useState(0),[y,setY]=useState(0),[flash,setFlash]=useState(false);
+  const night=hour>=20||hour<6;
+  const move=useCallback((dx:number,dy:number)=>{if(dead||won)return;setX(v=>Math.max(-5,Math.min(5,v+dx)));setY(v=>Math.max(-3,Math.min(3,v+dy)));setStarted(true);setMessage("Etrafı keşfediyorsun... Yakındaki kaynakları topla.");},[dead,won]);
+  const gather=useCallback(()=>{if(dead||won)return;const n=Math.floor(Math.random()*4);if(n===0){setWood(v=>v+2);setMessage("🪵 2 odun topladın.");}else if(n===1){setStone(v=>v+2);setMessage("🪨 2 taş topladın.");}else if(n===2){setBerries(v=>v+2);setMessage("🫐 2 yabani yemiş buldun.");}else{setWater(v=>Math.min(100,v+24));setMessage("💧 Temiz su içtin.");}setStarted(true);},[dead,won]);
+  const eat=()=>{if(berries<1){setMessage("Yemişin yok. Önce kaynak topla.");return;}setBerries(v=>v-1);setFood(v=>Math.min(100,v+28));setMessage("Yabani yemiş yedin.");};
+  const make=(what:"fire"|"shelter")=>{if(what==="fire"){if(wood<4||stone<2){setMessage("Ateş için 4 odun ve 2 taş gerekli.");return;}setWood(v=>v-4);setStone(v=>v-2);setFire(true);setMessage("🔥 Kamp ateşi kuruldu!");}else{if(wood<8){setMessage("Barınak için 8 odun gerekli.");return;}setWood(v=>v-8);setShelter(true);setWon(true);setMessage("Barınağın hazır. Başardın!");}};
+  const restart=()=>{setHp(100);setFood(90);setWater(90);setWood(0);setStone(0);setBerries(0);setDay(1);setHour(8);setStarted(false);setDead(false);setWon(false);setFire(false);setShelter(false);setX(0);setY(0);setMessage("Ormanda uyandın. Kaynak topla ve barınağını inşa et.");};
+  useEffect(()=>{const key=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(k==="w"||k==="arrowup")move(0,1);if(k==="s"||k==="arrowdown")move(0,-1);if(k==="a"||k==="arrowleft")move(-1,0);if(k==="d"||k==="arrowright")move(1,0);if(k==="e")gather();if(k==="tab"){e.preventDefault();setInventory(v=>!v);}if(k==="b")setBuild(v=>!v);if(k==="f")setFlash(v=>!v);if(/^[0-9]$/.test(k))setSelected(k==="0"?9:Number(k)-1);};window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[move,gather]);
+  useEffect(()=>{if(!started||dead||won)return;const id=window.setInterval(()=>{setHour(h=>{const n=(h+1)%24;if(n===0)setDay(d=>d+1);return n;});setFood(v=>Math.max(0,v-1));setWater(v=>Math.max(0,v-2));setHp(v=>{const n=Math.max(0,v-((food<=1||water<=2)?7:night&&!fire?2:0));if(n===0)setDead(true);return n;});},12000);return()=>window.clearInterval(id);},[started,dead,won,night,fire,food,water]);
+  const stats=[{label:"SAĞLIK",value:hp,color:"#e34f61",icon:"✚"},{label:"AÇLIK",value:food,color:"#d7a32d",icon:"♨"},{label:"SUSUZLUK",value:water,color:"#39bde0",icon:"◉"}];
+  return <main className="game">
+    <style jsx>{`
+      *{box-sizing:border-box}.game{height:100svh;min-height:600px;overflow:hidden;position:relative;color:#fff;font-family:Arial,sans-serif;background:#17241d;isolation:isolate}
+      .world{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#8492a5 0%,#b4a995 35%,#63734c 62%,#273322 100%);transition:filter .5s}.world.night{filter:brightness(.42) saturate(.8) hue-rotate(14deg)}
+      .sun{position:absolute;top:-9%;left:24%;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,#fff9d8 0%,#fff0bd88 35%,transparent 72%);filter:blur(7px)}
+      .haze{position:absolute;inset:23% 0 28%;background:linear-gradient(90deg,#d7d3c555,transparent 25%,#ddd4c255 52%,transparent 78%);filter:blur(22px)}
+      .ground{position:absolute;left:-20%;right:-20%;bottom:-35%;height:77%;border-radius:50% 50% 0 0;background:repeating-radial-gradient(ellipse at 50% 0%,#64533b 0 2px,#4a4834 3px 9px,#37402d 10px 17px);transform:perspective(450px) rotateX(15deg);box-shadow:0 -20px 55px #1c291e}
+      .tree{position:absolute;bottom:28%;width:14%;height:80%;transform-origin:bottom}.tree:before{content:"";position:absolute;bottom:0;left:47%;width:10%;height:74%;background:linear-gradient(90deg,#30251e,#60402a,#211d18);box-shadow:8px 0 14px #1118}.tree:after{content:"";position:absolute;left:-35%;top:0;width:180%;height:75%;background:radial-gradient(ellipse at 50% 30%,#78845b 0%,#43583c 32%,#263b2b 65%,transparent 70%);clip-path:polygon(50% 0,75% 18%,100% 49%,79% 47%,96% 78%,57% 67%,50% 100%,38% 70%,2% 81%,22% 49%,0 53%,30% 19%);filter:drop-shadow(0 9px 8px #17251b)}.t1{left:-3%;height:105%;width:18%}.t2{left:14%;height:79%;width:12%;transform:scale(.8)}.t3{left:33%;height:96%;width:13%;transform:scale(.9)}.t4{right:17%;height:105%;width:17%}.t5{right:-3%;height:93%;width:19%}.t6{right:39%;height:73%;width:11%;transform:scale(.7)}
+      .cabin{position:absolute;left:50%;bottom:25%;width:min(37vw,590px);height:min(33vw,440px);transform:translateX(-50%) translate(calc(var(--px)*-9px),calc(var(--py)*5px));transition:transform .3s;filter:drop-shadow(0 24px 18px #090d0c88)}
+      .roof{position:absolute;left:-4%;top:0;width:108%;height:43%;background:repeating-linear-gradient(170deg,#49352c 0 12px,#614534 13px 19px,#332720 20px 24px);clip-path:polygon(50% 0,100% 52%,96% 67%,50% 26%,4% 67%,0 52%);border-bottom:8px solid #241d19}
+      .house{position:absolute;left:8%;right:8%;top:31%;height:65%;background:repeating-linear-gradient(0deg,#3d2920 0 17px,#72503a 18px 26px,#2e211b 27px 31px);border:8px solid #2b201b;box-shadow:inset 0 0 30px #100c0a88}
+      .house:before{content:"";position:absolute;left:-5px;right:-5px;top:20%;height:8px;background:#201914;box-shadow:0 33px #201914,0 66px #201914,0 99px #201914}
+      .door{position:absolute;right:22%;bottom:0;width:19%;height:61%;background:repeating-linear-gradient(90deg,#36251d 0 9px,#68462f 10px 14px);border:5px solid #241a16;border-bottom:0;border-radius:3px 3px 0 0}
+      .window{position:absolute;left:19%;top:35%;width:16%;height:19%;border:5px solid #281d18;background:#17232a;box-shadow:inset 0 0 18px #d4b46a55}
+      .axe{position:absolute;right:14%;bottom:-3%;width:24%;height:48%;transform:rotate(-16deg);filter:drop-shadow(7px 10px 6px #0009);pointer-events:none}
+      .handle{position:absolute;left:47%;top:10%;width:9%;height:95%;border-radius:9px;background:linear-gradient(90deg,#3d2116,#9a6840,#41271a)}
+      .head{position:absolute;left:8%;top:8%;width:82%;height:28%;background:linear-gradient(145deg,#b8b5a4,#555b5a 55%,#222b2d);clip-path:polygon(0 8%,74% 0,100% 34%,82% 100%,27% 84%);border-radius:20px}
+      .cross{position:absolute;left:50%;top:49%;width:12px;height:12px;border:1px solid #ffffffd9;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 3px #000}
+      .topHud{position:absolute;top:22px;left:28px;right:28px;display:flex;justify-content:space-between;align-items:flex-start;text-shadow:0 2px 5px #000}.brand{font-size:11px;letter-spacing:3px;font-weight:bold;color:#f5d58d}.title{font-size:clamp(19px,2.2vw,30px);font-weight:900;margin-top:5px}.clock{background:#10171399;border:1px solid #ffffff55;border-radius:12px;padding:10px 15px;text-align:right;font-weight:bold}.clock small{display:block;font-size:11px;margin-top:4px;color:#ddd}
+      .leftHud{position:absolute;left:22px;bottom:20px;width:185px;text-shadow:0 2px 4px #000}.needs{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.need{width:48px;height:48px;border:4px solid #c9c9c9;border-radius:50%;background:#111c20d9;display:grid;place-items:center;font-size:22px;box-shadow:0 3px 8px #0009;position:relative}.need b{position:absolute;bottom:-5px;right:-4px;background:#202322;border-radius:8px;padding:2px 4px;font-size:9px}.health{width:105px;height:105px;border:7px solid #bcb9b2;border-radius:50%;font-size:15px;background:conic-gradient(#d94c58 var(--hp),#29272a 0);display:grid;place-items:center;margin-top:7px;box-shadow:0 3px 12px #000a}.health span{background:#222a2a;border-radius:50%;width:78px;height:78px;display:grid;place-items:center}
+      .hotbar{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:7px;max-width:65vw}.slot{width:clamp(48px,4.5vw,82px);height:88px;border:2px solid #aaa6a0;background:#202126b8;box-shadow:0 4px 12px #0007;position:relative;border-radius:2px;display:grid;place-items:center;font-size:31px;cursor:pointer}.slot.active{border:2px solid #f2c94f;box-shadow:0 0 12px #e7b83c66}.slot small{position:absolute;bottom:-1px;left:-1px;background:#252a27;border:1px solid #c2b98b;border-radius:7px;padding:3px 6px;font-size:12px;color:#fff}
+      .rightHud{position:absolute;right:28px;bottom:32px;display:grid;gap:14px;text-shadow:0 2px 4px #000;font-size:14px;font-weight:bold}.key{display:inline-grid;place-items:center;width:31px;height:31px;border:2px solid #ddd;border-radius:8px;background:#252522aa;margin-right:7px}
+      .message{position:absolute;left:50%;top:17%;transform:translateX(-50%);padding:10px 16px;background:#111b17a8;border:1px solid #ffffff33;border-radius:10px;font-size:13px;text-align:center;max-width:min(90vw,520px);text-shadow:0 1px 3px #000}
+      .panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,90vw);padding:22px;background:#111a17ee;border:1px solid #ffffff55;border-radius:15px;box-shadow:0 20px 60px #000b;text-align:center}.panel h2{margin:0 0 10px}.panel p{color:#d5ddd3;font-size:13px;line-height:1.6}.panel button{background:#d6ad57;border:0;border-radius:8px;padding:10px 14px;font-weight:bold;margin:5px;cursor:pointer}.panel .close{background:#53665a;color:white}
+      .flashlight{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 54% 48%,transparent 0 22%,#000b 70%);mix-blend-mode:multiply}
+      @media(max-width:700px){.topHud{left:12px;right:12px;top:12px}.leftHud{left:10px;bottom:112px;transform:scale(.78);transform-origin:left bottom}.rightHud{right:10px;bottom:112px;font-size:11px}.hotbar{max-width:96vw;gap:3px;bottom:8px}.slot{height:57px;font-size:22px;width:8.7vw}.cabin{width:76vw;height:60vw;bottom:34%}.message{top:13%;font-size:11px}.sun{left:15%;width:150px;height:150px}}
+    `}</style>
+    <div className={`world ${night?"night":""}`} style={{"--px":x,"--py":y} as React.CSSProperties}>
+      <div className="sun"/><div className="haze"/>{["t1","t2","t3","t4","t5","t6"].map(t=><div key={t} className={`tree ${t}`}/>)}<div className="ground"/>
+      <div className="cabin"><div className="roof"/><div className="house"><div className="window"/><div className="door"/></div></div>
+      <div className="axe"><div className="handle"/><div className="head"/></div>
+      {flash&&<div className="flashlight"/>}
+    </div>
+    <div className="cross"/>
+    <header className="topHud"><div><div className="brand">AY ZEK  /  SURVIVAL</div><div className="title">ORMANDA HAYATTA KAL</div></div><div className="clock">{night?"🌙 GECE":"☀ GÜNDÜZ"}<small>GÜN {day} · {String(hour).padStart(2,"0")}:00</small></div></header>
+    <div className="message">📜 {message}</div>
+    <div className="leftHud"><div className="needs">{stats.map(s=><div className="need" key={s.label} style={{color:s.color}}>{s.icon}<b>{s.value}%</b></div>)}</div><div className="health" style={{"--hp":hp+"%"} as React.CSSProperties}><span>❤️ {hp}%</span></div></div>
+    <div className="hotbar">{slots.map((s,i)=><button key={i} className={`slot ${selected===i?"active":""}`} onClick={()=>setSelected(i)}>{s}<small>{i===9?"0":i+1}</small></button>)}</div>
+    <div className="rightHud"><div><span className="key">B</span>İnşa et</div><div><span className="key">TAB</span>Envanter</div><div><span className="key">E</span>Kaynak topla</div><div><span className="key">F</span>El feneri</div></div>
+    {(inventory||build||dead||won)&&<div className="panel">{dead||won?<><h2>{won?"🏆 Hayatta kaldın!":"💀 Oyun bitti"}</h2><p>{won?"Barınağını inşa ettin. Vahşi doğayı yendin!":"Doğa kazandı. Bir kez daha dene."}</p><button onClick={restart}>Yeniden oyna</button></>:inventory?<><h2>🎒 Envanter</h2><p>🪵 Odun: {wood}　 🪨 Taş: {stone}<br/>🫐 Yemiş: {berries}　 💧 Su: {water}%</p><button onClick={eat}>Yemiş ye</button><button className="close" onClick={()=>setInventory(false)}>Kapat (TAB)</button></>:<><h2>🛠️ İnşa menüsü</h2><p>Kamp ateşi: 4 odun + 2 taş<br/>Barınak: 8 odun</p><button onClick={()=>make("fire")} disabled={fire}>🔥 {fire?"Ateş kuruldu":"Kamp ateşi kur"}</button><button onClick={()=>make("shelter")} disabled={shelter}>🏕️ Barınak kur</button><button className="close" onClick={()=>setBuild(false)}>Kapat (B)</button></>}</div>}
+    <div style={{position:"absolute",inset:0,pointerEvents:"none"}} onTouchStart={()=>{}}/>
+    <div style={{position:"absolute",left:"50%",bottom:110,transform:"translateX(-50%)",display:"flex",gap:8}}><button className="key" onClick={()=>move(0,1)}>W</button><button className="key" onClick={()=>move(-1,0)}>A</button><button className="key" onClick={()=>move(0,-1)}>S</button><button className="key" onClick={()=>move(1,0)}>D</button><button className="key" onClick={gather}>E</button></div>
+  </main>;
 }
