@@ -22,6 +22,10 @@ const items = [
   { name:"Snapseed", platform:"Android", category:"Tasarım", desc:"Fotoğraf düzenleme araçları.", icon:"📷", url:"https://play.google.com/store/apps/details?id=com.niksoftware.snapseed" },
   { name:"Termux", platform:"Android", category:"Geliştirici", desc:"Android üzerinde terminal ortamı.", icon:">_", url:"https://termux.dev/" },
   { name:"Proton VPN", platform:"Android", category:"Güvenlik", desc:"Gizlilik odaklı VPN hizmeti.", icon:"🛡", url:"https://protonvpn.com/download-android" },
+  { name:"TickTick", platform:"Android", category:"Üretkenlik", desc:"Görev, takvim ve hatırlatıcıları tek yerde yönet.", icon:"✓", url:"https://play.google.com/store/apps/details?id=com.ticktick.task" },
+  { name:"Google Keep", platform:"Android", category:"Notlar", desc:"Not, kontrol listesi ve hatırlatıcı oluştur.", icon:"📝", url:"https://play.google.com/store/apps/details?id=com.google.android.keep" },
+  { name:"LocalSend", platform:"Android", category:"Araçlar", desc:"Aynı ağdaki cihazlar arasında güvenli dosya aktarımı.", icon:"⇄", url:"https://play.google.com/store/apps/details?id=org.localsend.localsend_app" },
+  { name:"Duolingo", platform:"Android", category:"Eğitim", desc:"Kısa ve eğlenceli derslerle dil öğren.", icon:"🦉", url:"https://play.google.com/store/apps/details?id=com.duolingo" },
   // Windows
   { name:"Firefox", platform:"Windows", category:"Tarayıcı", desc:"Gizlilik araçlarına sahip web tarayıcısı.", icon:"🦊", url:"https://www.mozilla.org/firefox/new/" },
   { name:"Google Chrome", platform:"Windows", category:"Tarayıcı", desc:"Hızlı ve yaygın web tarayıcısı.", icon:"🌐", url:"https://www.google.com/chrome/" },
@@ -48,6 +52,10 @@ const items = [
   { name:"Epic Games Launcher", platform:"Windows", category:"Oyun", desc:"Oyun mağazası ve başlatıcısı.", icon:"🎮", url:"https://store.epicgames.com/download" },
   { name:"SumatraPDF", platform:"Windows", category:"Ofis", desc:"Hafif PDF ve e-kitap okuyucu.", icon:"📄", url:"https://www.sumatrapdfreader.org/download-free-pdf-viewer" },
   { name:"KeePass", platform:"Windows", category:"Güvenlik", desc:"Yerel ve açık kaynak parola kasası.", icon:"🔑", url:"https://keepass.info/download.html" },
+  { name:"Microsoft PowerToys", platform:"Windows", category:"Araçlar", desc:"Windows için pencere, arama ve üretkenlik yardımcıları.", icon:"⚙", url:"https://learn.microsoft.com/windows/powertoys/install" },
+  { name:"qBittorrent", platform:"Windows", category:"Araçlar", desc:"Ücretsiz ve açık kaynak BitTorrent istemcisi.", icon:"⇩", url:"https://www.qbittorrent.org/download" },
+  { name:"Obsidian", platform:"Windows", category:"Notlar", desc:"Bağlantılı notlar ve kişisel bilgi tabanı oluştur.", icon:"◈", url:"https://obsidian.md/download" },
+  { name:"Docker Desktop", platform:"Windows", category:"Geliştirici", desc:"Konteyner tabanlı uygulama geliştirme ortamı.", icon:"🐳", url:"https://docs.docker.com/desktop/setup/install/windows-install/" },
 ];
 
 export default function DownloadCenter() {
