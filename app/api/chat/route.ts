@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     const google = createGoogleGenerativeAI({ apiKey });
     const result = streamText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-3.5-flash-lite"),
       system: systemPrompt,
       messages: await convertToModelMessages(messages),
       onError({ error }) { console.error("Ay Zk Gemini stream error:", error); }
