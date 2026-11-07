@@ -69,7 +69,7 @@ export default function DownloadCenter() {
   ),[platform,category,query]);
 
   return <main className="hub">
-    <nav><a className="logo" href="/"> <b>A</b> ay<span>zek</span></a><div><a className="navactive" href="#apps">Uygulamalar</a><a href="/satranc">Satranç</a><a href="#safety">Güvenlik</a></div><small>✦ Ay Zek Mağaza</small></nav>
+    <nav><a className="logo" href="/"> <b>A</b> ay<span>zek</span></a><div><a className="navactive" href="#apps">Uygulamalar</a><a href="/satranc">Satranç</a><a href="/hacker">Hacker Terminali</a><a href="#safety">Güvenlik</a></div><small>✦ Ay Zek Mağaza</small></nav>
     <header><div className="hero-copy"><label>AY ZEK UYGULAMA MAĞAZASI</label><h1>Keşfet. İndir.<br/><em>Keyfini çıkar.</em></h1><p>Android ve Windows uygulamalarını tek yerde keşfet. İndirmeler seni resmî geliştirici sayfalarına götürür.</p><a className="cta" href="#apps">Mağazaya göz at ↓</a></div><div className="hero-art"><span>✦</span><b>Uygulamalar<br/>senin dünyan.</b><small>ANDROID · WINDOWS</small></div></header>
     <section id="apps"><div className="heading"><div><label>MAĞAZA</label><h2>Senin için keşfet</h2><p>Popüler uygulamalar ve kullanışlı araçlar.</p></div><small>{visible.length} uygulama</small></div>
       <div className="storebar"><div className="tabs">{["Tümü","Android","Windows"].map(x=><button key={x} className={platform===x?"selected":""} onClick={()=>setPlatform(x)}>{x==="Android"?"◈ ":x==="Windows"?"⊞ ":"✦ "}{x}</button>)}</div><span>Ücretsiz keşif kataloğu</span></div>
