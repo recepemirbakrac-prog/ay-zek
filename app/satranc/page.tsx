@@ -91,7 +91,7 @@ export default function ChessGame() {
     }, 450);
     return () => window.clearTimeout(timer);
   }, [fen, mode, difficulty, turn, over]);
-\n  const status = game.current.isCheckmate()
+  const status = game.current.isCheckmate()
     ? `Şah mat! ${turn === "w" ? "Siyah" : "Beyaz"} kazandı.`
     : game.current.isStalemate() ? "Pat! Oyun berabere."
     : game.current.isThreefoldRepetition() ? "Üç tekrar: beraberlik."
