@@ -72,7 +72,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
     try {
       setName(initialName || localStorage.getItem(NAME_KEY) || "Misafir");
       const inviteRoom = new URLSearchParams(window.location.search).get("oda");
-      setRoom(inviteRoom?.trim() || localStorage.getItem(ROOM_KEY) || "genel");
+      setRoom(inviteRoom?.trim() || "genel"); // Davet bağlantısı olmadan herkes otomatik ortak lobiye katılır.
       const data = readSavedRooms();
       setMessages(Array.isArray(data["genel"]) ? data["genel"] : []);
     } catch {}
@@ -325,7 +325,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
         <aside className="list-panel">
           <div className="list-head"><h1>Mesajlar <span>· {room}</span></h1><button className="icon-btn" onClick={joinRoom} title="Oda oluştur veya katıl"><PencilLine size={17}/></button></div>
           <label className="searchbox"><Search size={15}/><input placeholder="Mesajlarda ara" value={search} onChange={e=>setSearch(e.target.value)}/></label>
-          <div className="room-card"><b>Ortak sohbet odası</b>Bu kodu arkadaşlarınla paylaş: <strong>{room}</strong></div>
+          <div className="room-card"><b>🌍 Herkese açık sohbet</b>Davet gerekmez. Hesabıyla giriş yapan herkes otomatik olarak <strong>genel</strong> odasına katılır.</div>
           <div className="chat-list"><button className="chat-item active" onClick={()=>setSearch("")}><span className="chat-avatar">#</span><span className="chat-copy"><b>{room}</b><small>{onlineCount} kişi çevrimiçi</small></span></button></div>
           <div className="list-bottom"><span className={"status-dot "+(connected?"on":"")}/>{connected?"Canlı bağlantı kuruldu":"Bağlantı bekleniyor"} <WifiOff size={13} style={{marginLeft:"auto"}}/></div>
         </aside>
@@ -369,7 +369,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
         <aside className={"right-panel "+(details?"mobile-open":"")}>
           <div className="detail-head"><span>Oda bilgisi</span><button className="icon-btn" onClick={()=>setDetails(false)} title="Kapat"><X size={16}/></button></div>
           <div className="group-profile"><div className="big-avatar">#</div><b>{room}</b></div>
-          <div className="detail-section"><div className="detail-title"><Info size={13}/> Gerçek zamanlı sohbet</div><p>Bu odaya aynı kodla katılan kişiler, Supabase bağlantısı açıkken mesajları anında görür. Sohbet kodunu arkadaşlarınla paylaş.</p></div>
+          <div className="detail-section"><div className="detail-title"><Info size={13}/> Gerçek zamanlı sohbet</div><p>Genel sohbet odasına giriş yapan herkes birbirinin mesajlarını anında görür. Davetiye veya oda kodu göndermene gerek yok.</p></div>
           <div className="detail-section"><div className="detail-title"><Users size={13}/> Bağlantı durumu</div><p>{connected?"Canlı sunucuya bağlandın.":"Sunucu bağlantısı kurulamadı."} {onlineCount} kişi çevrimiçi görünüyor.</p></div>
           <div className="detail-section"><button className="detail-action" onClick={invite}><Link2 size={15}/> Davet bağlantısını kopyala</button><button className="detail-action" onClick={joinRoom}><Plus size={15}/> Başka odaya katıl / oda oluştur</button><button className="detail-action" onClick={changeName}><UserRound size={15}/> Görünen adını değiştir</button></div>
           <div className="detail-tools"><button title="Bildirimleri aç/kapat" onClick={()=>setNotifications(v=>!v)}>{notifications?<Bell size={15}/>:<Bell size={15}/>}</button><button title="Davet et" onClick={invite}><Users size={15}/></button><button title="Tema değiştir" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={15}/>:<Moon size={15}/>}</button><button title="Kapat" onClick={()=>setDetails(false)}><LogOut size={15}/></button></div>
