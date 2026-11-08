@@ -367,13 +367,15 @@ export default function OfflineChatPage() {
       email:email.trim(),
       options:{emailRedirectTo:"https://ay-zek.vercel.app/internetsiz-sohbet"}
     });
-    setError(resendError ? "Doğrulama e-postası gönderilemedi: "+resendError.message : "Doğrulama bağlantısı yeniden gönderildi. Gelen kutunu ve spam klasörünü kontrol et.");
+    setError(resendError
+      ? (/rate limit|after \d+ seconds/i.test(resendError.message) ? "E-posta gönderme sınırına ulaşıldı. Biraz bekleyip yalnızca bir kez tekrar dene." : "Doğrulama e-postası gönderilemedi: "+resendError.message)
+      : "Yeni doğrulama bağlantısı gönderildi. En son gelen e-postayı kullan; eski bağlantıları açma.");
   };
   const submit=async()=>{
     if(!supabase)return;
     setError("");
     const result=mode==="signup"
-      ? await supabase.auth.signUp({email:email.trim(),password})
+      ? await supabase.auth.signUp({email:email.trim(),password,options:{emailRedirectTo:"https://ay-zek.vercel.app/internetsiz-sohbet"}})
       : await supabase.auth.signInWithPassword({email:email.trim(),password});
     if(result.error){
       const message=result.error.message||"Bir hata oluştu.";
