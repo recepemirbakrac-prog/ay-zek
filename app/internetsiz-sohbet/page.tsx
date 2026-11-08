@@ -19,7 +19,7 @@ const ROOM_KEY = "ayzek-chat-room-v1";
 const makeId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
 const clock = () => new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
-export default function OfflineChatPage() {
+function ChatRoom() {
   const [name, setName] = useState("Misafir");
   const [room, setRoom] = useState("genel");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -139,7 +139,7 @@ export default function OfflineChatPage() {
     setMessages(prev => [...prev, optimistic].slice(-250));
     setDraft(""); setFileData(null);
     const { error } = await supabase.from("chat_messages").insert({
-      id, room_code: room, sender: name, body: text,
+      id, room_code: room, sender: name, sender_id: (await supabase.auth.getUser()).data.user?.id, body: text,
       file_name: optimistic.fileName || null, image_data: optimistic.image || null,
     });
     if (error) {
@@ -234,8 +234,8 @@ export default function OfflineChatPage() {
           <header className="topbar">
             <div className="current-person"><span className="chat-avatar">#</span><div><h2>{room}</h2><p>{connected?onlineCount+" kişi çevrimiçi":"Canlı bağlantı yok"}</p></div></div>
             <div className="top-actions">
-              <button title="Sesli arama" onClick={()=>notify("Sesli arama özelliği henüz etkin değil.")}><Phone size={17}/></button>
-              <button title="Görüntülü arama" onClick={()=>notify("Görüntülü arama özelliği henüz etkin değil.")}><Video size={17}/></button>
+              <button title="Sesli arama" onClick={()=>window.dispatchEvent(new CustomEvent("ayzek-call",{detail:{video:false}}))}><Phone size={17}/></button>
+              <button title="Görüntülü arama" onClick={()=>window.dispatchEvent(new CustomEvent("ayzek-call",{detail:{video:true}}))}><Video size={17}/></button>
               <button title="Mesajlarda ara" onClick={()=>setShowSearch(v=>!v)}><Search size={17}/></button>
               <button title="Oda bilgisi" onClick={()=>setDetails(v=>!v)}><Info size={17}/></button>
               <button title="Diğer işlemler" onClick={()=>setMenu(v=>!v)}><Settings size={17}/></button>
@@ -272,4 +272,41 @@ export default function OfflineChatPage() {
       {toast&&<div className="toast" role="status">{toast}</div>}
     </main>
   );
+}
+
+
+export default function OfflineChatPage() {
+  const [supabase] = useState(()=>getRealtimeClient());
+  const [session,setSession] = useState<any>(null);
+  const [loading,setLoading] = useState(true);
+  const [mode,setMode] = useState<"login"|"signup">("login");
+  const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [error,setError] = useState("");
+  useEffect(()=>{
+    if(!supabase){setLoading(false);setError("Supabase bağlantısı bulunamadı.");return;}
+    supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false);});
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>setSession(s));
+    return ()=>subscription.unsubscribe();
+  },[supabase]);
+  const submit=async()=>{
+    if(!supabase)return;
+    setError("");
+    const result=mode==="signup"
+      ? await supabase.auth.signUp({email:email.trim(),password})
+      : await supabase.auth.signInWithPassword({email:email.trim(),password});
+    if(result.error)setError(result.error.message);
+    else if(mode==="signup"&&!result.data.session)setError("Kayıt başarılı. E-postanı doğrula, sonra giriş yap.");
+  };
+  if(loading)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",background:"#24232d",color:"white"}}>Ay Zek yükleniyor…</main>;
+  if(!session)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:20,background:"radial-gradient(ellipse at 20% 10%,#51446b,#24232d)",fontFamily:"system-ui"}}>
+    <section style={{width:"min(420px,100%)",padding:30,borderRadius:24,background:"#191725",color:"white",border:"1px solid #ffffff20"}}>
+      <h1>Ay Zek Sohbet</h1><p>Mesajlaşmak için hesabına giriş yap veya ücretsiz kayıt ol.</p>
+      <div style={{display:"flex",gap:8,margin:"18px 0"}}><button onClick={()=>setMode("login")}>Giriş yap</button><button onClick={()=>setMode("signup")}>Kayıt ol</button></div>
+      <input type="email" placeholder="E-posta" value={email} onChange={e=>setEmail(e.target.value)} style={{display:"block",width:"100%",padding:13,marginBottom:12}}/>
+      <input type="password" placeholder="Şifre (en az 6 karakter)" value={password} onChange={e=>setPassword(e.target.value)} style={{display:"block",width:"100%",padding:13,marginBottom:14}}/>
+      <button onClick={()=>void submit()} style={{width:"100%",padding:14,background:"#935be8",color:"white",border:0,borderRadius:10}}>{mode==="login"?"Giriş yap":"Hesap oluştur"}</button>
+      {error&&<p style={{color:"#ffc2d5",fontSize:13}}>{error}</p>}
+    </section></main>;
+  return <ChatRoom/>;
 }
