@@ -62,7 +62,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
       const inviteRoom = new URLSearchParams(window.location.search).get("oda");
       setRoom(inviteRoom?.trim() || localStorage.getItem(ROOM_KEY) || "genel");
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setMessages(JSON.parse(saved));
+      if (saved) { const parsed = JSON.parse(saved); setMessages(Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed[room || "genel"]) ? parsed[room || "genel"] : [])); }
     } catch {}
     setReady(true);
   }, []);
@@ -346,7 +346,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
 
 
 export default function OfflineChatPage() {
-  const [supabase] = useState(()=>getRealtimeClient());
+  const [supabase] = useState(()=>{ try { return getRealtimeClient(); } catch (error) { console.error("Ay Zek Supabase başlatılamadı:", error); return null; } });
   const [session,setSession] = useState<any>(null);
   const [loading,setLoading] = useState(true);
   const [mode,setMode] = useState<"login"|"signup">("login");
@@ -357,7 +357,7 @@ export default function OfflineChatPage() {
 
   useEffect(()=>{
     if(!supabase){setLoading(false);setError("Supabase bağlantısı bulunamadı.");return;}
-    supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false);});
+    supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false);}).catch((error)=>{console.error("Oturum yüklenemedi:",error);setError("Oturum yüklenemedi. Sayfayı yenileyip tekrar dene.");setLoading(false);});
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>setSession(s));
     return ()=>subscription.unsubscribe();
   },[supabase]);
