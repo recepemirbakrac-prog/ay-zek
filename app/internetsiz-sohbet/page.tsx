@@ -62,7 +62,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
       const inviteRoom = new URLSearchParams(window.location.search).get("oda");
       setRoom(inviteRoom?.trim() || localStorage.getItem(ROOM_KEY) || "genel");
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) { const parsed = JSON.parse(saved); setMessages(Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed[room || "genel"]) ? parsed[room || "genel"] : [])); }
+      if (saved) { const parsed: unknown = JSON.parse(saved); const data = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, ChatMessage[]> : {}; setMessages(Array.isArray(data["genel"]) ? data["genel"] : []); }
     } catch {}
     setReady(true);
   }, []);
@@ -75,7 +75,8 @@ function ChatRoom({ initialName }: { initialName: string }) {
   useEffect(() => {
     if (!ready) return;
     localStorage.setItem(ROOM_KEY, room);
-    const all: Record<string, ChatMessage[]> = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const all: Record<string, ChatMessage[]> = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, ChatMessage[]> : {};
     if (loadedRoom !== room) return;
     all[room] = messages.slice(-250);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
@@ -404,7 +405,7 @@ export default function OfflineChatPage() {
       <input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} placeholder="ör. emir_123" style={{display:"block",width:"100%",boxSizing:"border-box",padding:13,marginBottom:14,borderRadius:10,border:"1px solid #51465f",background:"#100f18",color:"white"}}/>
       <label style={{display:"block",fontSize:13,marginBottom:6}}>Şifre</label>
       <input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void submit();}} placeholder="En az 8 karakter" style={{display:"block",width:"100%",boxSizing:"border-box",padding:13,marginBottom:16,borderRadius:10,border:"1px solid #51465f",background:"#100f18",color:"white"}}/>
-      <button disabled={busy} onClick={()=>void submit()} style={{width:"100%",padding:14,border:0,borderRadius:10,background:"linear-gradient(120deg,#8b5cf6,#d946ef)",color:"white",fontWeight:700,opacity:busy?.7:1}}>{busy?"Bekle…":mode==="login"?"Giriş yap":"Ücretsiz hesap oluştur"}</button>
+      <button disabled={busy} onClick={()=>void submit()} style={{width:"100%",padding:14,border:0,borderRadius:10,background:"linear-gradient(120deg,#8b5cf6,#d946ef)",color:"white",fontWeight:700,opacity:busy ? 0.7 : 1}}>{busy?"Bekle…":mode==="login"?"Giriş yap":"Ücretsiz hesap oluştur"}</button>
       {error&&<p role="alert" style={{color:"#ffc2d5",fontSize:13,lineHeight:1.5}}>{error}</p>}
       <p style={{fontSize:12,color:"#aaa2b7",marginBottom:0}}>Kullanıcı adı: 3-20 karakter. Şifre: en az 8 karakter.</p>
     </section>
