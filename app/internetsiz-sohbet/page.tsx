@@ -6,7 +6,7 @@ import {
   Settings, Paperclip, Mic, Bell, Users, Info, Sun, Moon, Grid2X2, X,
   PencilLine, Image as ImageIcon, Smile, Copy, LogOut, Check, Link2, UserRound
 } from "lucide-react";
-import { getRealtimeClient } from "@/lib/supabase-realtime";
+import { getRealtimeClient } from "../../lib/supabase-realtime";
 
 type ChatMessage = {
   id: string; sender: string; text: string; time: string; mine: boolean;
