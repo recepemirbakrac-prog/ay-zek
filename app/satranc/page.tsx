@@ -1,220 +1,44 @@
 "use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
+import Link from "next/link";
+import { ArrowLeft, RotateCcw, Undo2, Bot, Crown, ChevronDown, RefreshCw } from "lucide-react";
 
-const glyphs: Record<string, string> = {
-  wk: "♔", wq: "♕", wr: "♖", wb: "♗", wn: "♘", wp: "♙",
-  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
-};
-const files = "abcdefgh";
-
-
-const values: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
-function evaluate(position: Chess) {
-  if (position.isCheckmate()) return position.turn() === "w" ? -100000 : 100000;
-  if (position.isDraw()) return 0;
-  let score = 0;
-  for (const row of position.board()) for (const piece of row) if (piece) score += (piece.color === "w" ? 1 : -1) * values[piece.type];
-  return score;
-}
-function minimax(position: Chess, depth: number, alpha: number, beta: number): number {
-  if (depth === 0 || position.isGameOver()) return evaluate(position);
-  const max = position.turn() === "w";
-  let best = max ? -Infinity : Infinity;
-  for (const move of position.moves({ verbose: true })) {
-    const next = new Chess(position.fen());
-    next.move({ from: move.from, to: move.to, promotion: "q" });
-    const score = minimax(next, depth - 1, alpha, beta);
-    best = max ? Math.max(best, score) : Math.min(best, score);
-    if (max) alpha = Math.max(alpha, best); else beta = Math.min(beta, best);
-    if (beta <= alpha) break;
-  }
-  return best;
-}
-function computerMove(position: Chess, level: string) {
-  const moves = position.moves({ verbose: true });
-  if (!moves.length) return null;
-  if (level === "easy") return moves[Math.floor(Math.random() * moves.length)];
-  let best = Infinity;
-  let choices: typeof moves = [];
-  const depth = level === "hard" ? 2 : 1;
-  for (const move of moves) {
-    const next = new Chess(position.fen());
-    next.move({ from: move.from, to: move.to, promotion: "q" });
-    const score = minimax(next, depth, -Infinity, Infinity);
-    if (score < best) { best = score; choices = [move]; }
-    else if (score === best) choices.push(move);
-  }
-  return choices[Math.floor(Math.random() * choices.length)] || moves[0];
-}
-
-export default function ChessGame() {
-  const game = useRef(new Chess());
-  const [fen, setFen] = useState(game.current.fen());
-  const [selected, setSelected] = useState<Square | null>(null);
-  const [lastMove, setLastMove] = useState<[string, string] | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
-  const [flipped, setFlipped] = useState(false);
-  const [mode, setMode] = useState<"computer" | "two">("computer");
-  const [difficulty, setDifficulty] = useState("medium");
-  const [thinking, setThinking] = useState(false);
-
-  const board = useMemo(() => {
-    const rows = game.current.board();
-    return flipped ? [...rows].reverse().map(row => [...row].reverse()) : rows;
-  }, [fen, flipped]);
-
-  const legalTargets = useMemo(() => {
-    if (!selected) return [];
-    return game.current.moves({ square: selected, verbose: true }).map(move => move.to);
-  }, [selected, fen]);
-
-  const turn = game.current.turn();
-  const over = game.current.isGameOver();
-  const checked = game.current.isCheck();
-
-  useEffect(() => {
-    if (mode !== "computer" || turn !== "b" || over) { setThinking(false); return; }
-    setThinking(true);
-    const timer = window.setTimeout(() => {
-      if (game.current.turn() !== "b" || game.current.isGameOver()) { setThinking(false); return; }
-      const move = computerMove(game.current, difficulty);
-      if (move) {
-        const played = game.current.move({ from: move.from, to: move.to, promotion: "q" });
-        setLastMove([played.from, played.to]);
-        setSelected(null);
-        setFen(game.current.fen());
-        setHistory(game.current.history());
-      }
-      setThinking(false);
-    }, 450);
-    return () => window.clearTimeout(timer);
-  }, [fen, mode, difficulty, turn, over]);
-  const status = game.current.isCheckmate()
-    ? `Şah mat! ${turn === "w" ? "Siyah" : "Beyaz"} kazandı.`
-    : game.current.isStalemate() ? "Pat! Oyun berabere."
-    : game.current.isThreefoldRepetition() ? "Üç tekrar: beraberlik."
-    : game.current.isInsufficientMaterial() ? "Yetersiz taş: beraberlik."
-    : game.current.isDraw() ? "Berabere!"
-    : checked ? `Şah! ${turn === "w" ? "Beyaz" : "Siyah"} hamle yapmalı.`
-    : `${turn === "w" ? "Beyaz" : "Siyah"} oynuyor`;
-
-  function sync() {
-    setFen(game.current.fen());
-    setHistory(game.current.history());
-  }
-
-  function clickSquare(square: Square) {
-    if (over || (mode === "computer" && turn === "b")) return;
-    const piece = game.current.get(square);
-    if (selected) {
-      const possible = game.current.moves({ square: selected, verbose: true }).some(m => m.to === square);
-      if (possible) {
-        try {
-          const move = game.current.move({ from: selected, to: square, promotion: "q" });
-          setLastMove([move.from, move.to]);
-          setSelected(null);
-          sync();
-          return;
-        } catch { /* invalid move: keep the board unchanged */ }
-      }
-    }
-    if (piece && piece.color === turn) setSelected(square);
-    else setSelected(null);
-  }
-
-  function reset() {
-    game.current = new Chess();
-    setSelected(null);
-    setLastMove(null);
-    setHistory([]);
-    setFen(game.current.fen());
-  }
-
-  return (
-    <main className="chessPage">
-      <nav className="chessNav">
-        <a className="chessLogo" href="/"><span>A</span> ayzek</a>
-        <a className="backStore" href="/indir">← Ay Zek Mağaza</a>
-      </nav>
-      <section className="chessIntro">
-        <div className="eyebrow">AY ZEK OYUNLAR</div>
-        <h1>Satranç <span>♞</span></h1>
-        <p>Stratejini kur, hamleni yap ve şah mat et.</p>
-      </section>
-      <section className="gameLayout">
-        <div className="boardPanel">
-          <div className="playerLine"><span className={turn === "b" && !over ? "turnDot active" : "turnDot"} /> Siyah {mode === "computer" ? "· Bilgisayar" : "· Oyuncu 2"} <small>{turn === "b" && !over ? (thinking ? "Düşünüyor…" : "Sırası") : "Bekliyor"}</small></div>
-          <div className="boardFrame">
-            <div className="chessBoard" role="grid" aria-label="Satranç tahtası">
-              {board.map((row, r) => row.map((piece, c) => {
-                const file = flipped ? 7 - c : c;
-                const rank = flipped ? r + 1 : 8 - r;
-                const square = `${files[file]}${rank}` as Square;
-                const light = (file + rank) % 2 === 0;
-                const isSelected = selected === square;
-                const isTarget = legalTargets.includes(square);
-                const isLast = !!lastMove?.includes(square);
-                const isKingCheck = checked && piece?.type === "k" && piece.color === turn;
-                return (
-                  <button
-                    key={square}
-                    role="gridcell"
-                    aria-label={`${square} ${piece ? (piece.color === "w" ? "beyaz" : "siyah") + " " + piece.type : "boş"}`}
-                    className={`square ${light ? "light" : "dark"} ${isSelected ? "selected" : ""} ${isLast ? "lastMove" : ""} ${isKingCheck ? "inCheck" : ""}`}
-                    onClick={() => clickSquare(square)}
-                  >
-                    {c === 0 && <span className="rankLabel">{rank}</span>}
-                    {r === 7 && <span className="fileLabel">{files[file]}</span>}
-                    {piece && <span className={`piece ${piece.color === "w" ? "whitePiece" : "blackPiece"}`}>{glyphs[piece.color + piece.type]}</span>}
-                    {isTarget && <span className={piece ? "captureHint" : "moveHint"} />}
-                  </button>
-                );
-              }))}
-            </div>
-          </div>
-          <div className="playerLine bottomPlayer"><span className={turn === "w" && !over ? "turnDot active" : "turnDot"} /> Beyaz · Sen <small>{turn === "w" && !over ? "Sıra sende" : "Bekliyor"}</small></div>
-        </div>
-        <aside className="gameSide">
-          <div className="statusCard">
-            <div className="sideEyebrow">OYUN DURUMU</div>
-            <div className="statusText"><span className={checked ? "statusIcon alert" : "statusIcon"}>{over ? "♛" : checked ? "!" : "♟"}</span><b>{status}</b></div>
-            <p>{over ? "Yeni bir oyun başlatarak tekrar oynayabilirsin." : "Tahtadaki taşlardan birine dokun, ardından hedef kareyi seç."}</p>
-          </div>
-          <div className="modeCard">
-            <b>Oyun modu</b>
-            <div className="modeButtons">
-              <button className={mode === "computer" ? "modeChoice chosen" : "modeChoice"} onClick={() => { setMode("computer"); reset(); }}>🤖 Bilgisayara karşı</button>
-              <button className={mode === "two" ? "modeChoice chosen" : "modeChoice"} onClick={() => { setMode("two"); reset(); }}>♟️ İki kişi</button>
-            </div>
-            {mode === "computer" && <label className="difficultyLabel">Zorluk
-              <select value={difficulty} onChange={e => setDifficulty(e.target.value)}>
-                <option value="easy">Kolay</option><option value="medium">Orta</option><option value="hard">Zor</option>
-              </select>
-            </label>}
-          </div>
-          <div className="actionRow">
-            <button onClick={reset} className="primaryAction">↻ Yeni oyun</button>
-            <button onClick={() => { setFlipped(v => !v); setSelected(null); }} className="secondaryAction">⇅ Tahtayı çevir</button>
-          </div>
-          <div className="movesCard">
-            <div className="movesHead"><b>Hamle geçmişi</b><span>{history.length} hamle</span></div>
-            {history.length === 0 ? <div className="noMoves">♙<p>İlk hamleni bekliyoruz.</p></div> : (
-              <div className="moveList">
-                {Array.from({ length: Math.ceil(history.length / 2) }, (_, i) => (
-                  <div className="movePair" key={i}><span>{i + 1}.</span><b>{history[i * 2]}</b><b>{history[i * 2 + 1] || "…"}</b></div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="rulesNote"><b>♜ Nasıl oynanır?</b><p>{mode === "computer" ? "Beyaz taşlarla bilgisayara karşı oyna. Bilgisayar siyah taşlarla hamle yapar." : "Taşını seç ve gitmek istediğin kareye dokun. Yalnızca kurallara uygun hamleler yapılabilir."} Piyon son sıraya ulaşınca vezire dönüşür.</p></div>
-        </aside>
-      </section>
-      <footer className="chessFooter">© {new Date().getFullYear()} Ay Zek · İyi oyunlar!</footer>
-      <style jsx global>{`
-        *{box-sizing:border-box}.chessPage{min-height:100vh;background:radial-gradient(ellipse at 50% 0%,#7048ad30,transparent 44%),#0a0b12;color:#f6f3fc;font-family:Arial,sans-serif;padding-bottom:35px}.chessNav{height:68px;border-bottom:1px solid #ffffff15;display:flex;align-items:center;justify-content:space-between;padding:0 max(5%,calc((100% - 1120px)/2))}.chessLogo{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none;font-size:20px;font-weight:800}.chessLogo span{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,#a78bfa,#e879f9);color:#1a1026}.backStore{font-size:12px;color:#c4b5fd;text-decoration:none}.chessIntro{width:min(1050px,92%);margin:40px auto 24px}.eyebrow,.sideEyebrow{font-size:9px;font-weight:800;letter-spacing:1.8px;color:#b9a0ff}.chessIntro h1{font-size:38px;letter-spacing:-1.5px;margin:10px 0 7px}.chessIntro h1 span{color:#c4b5fd}.chessIntro p{font-size:13px;color:#9691a4;margin:0}.gameLayout{width:min(1050px,92%);margin:auto;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(270px,.75fr);gap:24px;align-items:start}.boardPanel{padding:18px;background:#141621;border:1px solid #ffffff16;border-radius:18px;box-shadow:0 20px 60px #0004}.playerLine{height:30px;display:flex;align-items:center;gap:8px;font-size:12px;color:#e6e0f1}.playerLine small{margin-left:auto;color:#888398;font-size:10px}.turnDot{width:8px;height:8px;border-radius:50%;background:#625c70}.turnDot.active{background:#a78bfa;box-shadow:0 0 10px #a78bfa}.boardFrame{padding:7px;background:#282237;border-radius:9px}.chessBoard{width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);overflow:hidden;border-radius:3px}.square{border:0;position:relative;display:grid;place-items:center;padding:0;cursor:pointer;min-width:0;min-height:0}.square.light{background:#eadfc9}.square.dark{background:#8b6a8c}.square.selected{background:#c4c46b}.square.lastMove.light{background:#d8d889}.square.lastMove.dark{background:#a8a65a}.square.inCheck{background:#d65c5c}.piece{font-family:Georgia,serif;font-size:clamp(27px,5vw,58px);line-height:1;z-index:1;user-select:none}.whitePiece{color:#fffaf0;text-shadow:0 2px 2px #352b2b,1px 1px 1px #352b2b,-1px -1px 1px #352b2b}.blackPiece{color:#28222d;text-shadow:0 1px 0 #ffffff55}.rankLabel,.fileLabel{position:absolute;font-size:9px;font-weight:700;z-index:2;opacity:.75}.rankLabel{top:3px;left:4px}.fileLabel{bottom:3px;right:4px}.light .rankLabel,.light .fileLabel{color:#705b59}.dark .rankLabel,.dark .fileLabel{color:#f7e8f0}.moveHint{position:absolute;width:24%;height:24%;border-radius:50%;background:#2b263b66}.captureHint{position:absolute;inset:3px;border:4px solid #29233d88;border-radius:50%}.bottomPlayer{margin-top:4px}.gameSide{display:flex;flex-direction:column;gap:13px}.statusCard,.movesCard,.rulesNote{background:#141621;border:1px solid #ffffff16;border-radius:15px;padding:17px}.statusText{display:flex;align-items:center;gap:11px;margin-top:15px}.statusText b{font-size:13px;line-height:1.4}.statusIcon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#a78bfa20;color:#d2bfff;font-size:20px}.statusIcon.alert{background:#ef444422;color:#fca5a5}.statusCard p,.rulesNote p{font-size:10px;color:#918ba0;line-height:1.7;margin:12px 0 0}.modeCard{background:#141621;border:1px solid #ffffff16;border-radius:15px;padding:15px}.modeCard>b{font-size:12px}.modeButtons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.modeChoice{padding:10px 5px;border-radius:8px;border:1px solid #ffffff20;background:#ffffff08;color:#c8c0d7;font-size:10px;cursor:pointer}.modeChoice.chosen{border-color:#a78bfa;background:#a78bfa20;color:#e5d9ff}.difficultyLabel{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:10px;color:#a9a1b8}.difficultyLabel select{background:#242033;color:#eee;border:1px solid #ffffff22;border-radius:7px;padding:7px 10px}.actionRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actionRow button{border-radius:9px;padding:12px 7px;font-size:10px;font-weight:700;cursor:pointer}.primaryAction{border:0;background:linear-gradient(110deg,#a78bfa,#e879f9);color:#1b1028}.secondaryAction{border:1px solid #ffffff22;background:#ffffff08;color:#d8cafa}.movesHead{display:flex;justify-content:space-between;align-items:center}.movesHead b{font-size:12px}.movesHead span{font-size:10px;color:#8e879d}.noMoves{height:105px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#b9a0ff;font-size:22px}.noMoves p{font-size:10px;color:#8e879d;margin:5px}.moveList{max-height:230px;overflow:auto;margin-top:12px}.movePair{display:grid;grid-template-columns:30px 1fr 1fr;padding:8px 5px;border-bottom:1px solid #ffffff0d;font-size:11px}.movePair span{color:#777184}.movePair b{font-weight:500;color:#e5def2}.rulesNote b{font-size:11px;color:#d7c7ff}.chessFooter{text-align:center;color:#625d70;font-size:10px;margin-top:35px}@media(max-width:760px){.gameLayout{grid-template-columns:1fr;max-width:560px;gap:13px}.chessIntro{margin-top:28px}.boardPanel{padding:12px}.piece{font-size:clamp(25px,9vw,54px)}.gameSide{display:grid;grid-template-columns:1fr 1fr}.statusCard,.movesCard,.rulesNote{padding:14px}.movesCard{grid-row:span 2}.actionRow{grid-template-columns:1fr}.rulesNote p{font-size:9px}}@media(max-width:430px){.gameSide{display:flex}.actionRow{grid-template-columns:1fr 1fr}.chessIntro h1{font-size:32px}.chessNav{padding:0 4%}.backStore{font-size:10px}}
-      `}</style>
-    </main>
-  );
+const glyph:Record<string,string>={wk:"♔",wq:"♕",wr:"♖",wb:"♗",wn:"♘",wp:"♙",bk:"♚",bq:"♛",br:"♜",bb:"♝",bn:"♞",bp:"♟"};
+const files="abcdefgh", value:Record<string,number>={p:100,n:320,b:330,r:500,q:900,k:20000};
+function evaluate(g:Chess){if(g.isCheckmate())return g.turn()==="w"?-100000:100000;if(g.isDraw())return 0;let s=0;for(const row of g.board())for(const p of row)if(p)s+=(p.color==="w"?1:-1)*value[p.type];return s;}
+function minimax(g:Chess,d:number,a:number,b:number):number{if(!d||g.isGameOver())return evaluate(g);const max=g.turn()==="w";let best=max?-Infinity:Infinity;for(const m of g.moves({verbose:true})){const n=new Chess(g.fen());n.move({from:m.from,to:m.to,promotion:"q"});const v=minimax(n,d-1,a,b);best=max?Math.max(best,v):Math.min(best,v);if(max)a=Math.max(a,best);else b=Math.min(b,best);if(b<=a)break;}return best;}
+function ai(g:Chess,level:string){const moves=g.moves({verbose:true});if(!moves.length)return null;if(level==="easy")return moves[Math.floor(Math.random()*moves.length)];let best=Infinity,choices:typeof moves=[];for(const m of moves){const n=new Chess(g.fen());n.move({from:m.from,to:m.to,promotion:"q"});const v=minimax(n,level==="hard"?2:1,-Infinity,Infinity)+(Math.random()*(level==="hard"?3:30));if(v<best){best=v;choices=[m];}else if(v===best)choices.push(m);}return choices[Math.floor(Math.random()*choices.length)]||moves[0];}
+export default function ChessGame(){
+ const game=useRef(new Chess());const [fen,setFen]=useState(game.current.fen());const [selected,setSelected]=useState<Square|null>(null);const [last,setLast]=useState<[string,string]|null>(null);const [history,setHistory]=useState<string[]>([]);const [level,setLevel]=useState("medium");const [thinking,setThinking]=useState(false);const [flipped,setFlipped]=useState(false);const [tab,setTab]=useState("moves");
+ const g=game.current,turn=g.turn(),over=g.isGameOver(),check=g.isCheck();
+ const targets=useMemo(()=>selected?g.moves({square:selected,verbose:true}).map(m=>m.to):[],[fen,selected]);
+ const rows=flipped?[0,1,2,3,4,5,6,7]:[7,6,5,4,3,2,1,0],cols=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
+ const sync=()=>{setFen(g.fen());setHistory(g.history());setSelected(null);};
+ const reset=()=>{game.current=new Chess();setFen(game.current.fen());setHistory([]);setLast(null);setSelected(null);setThinking(false);};
+ useEffect(()=>{if(turn!=="b"||over)return;setThinking(true);const t=window.setTimeout(()=>{const m=ai(g,level);if(m){const p=g.move({from:m.from,to:m.to,promotion:"q"});setLast([p.from,p.to]);sync();}setThinking(false);},500);return()=>window.clearTimeout(t);},[fen,level]);
+ const status=g.isCheckmate()?(turn==="w"?"Bilgisayar kazandı · Şah mat":"Kazandın · Şah mat"):g.isDraw()?"Oyun berabere":thinking?"Bilgisayar düşünüyor…":check?"Şah!":turn==="w"?"Sıra sende":"Bilgisayar oynuyor";
+ function click(s:Square){if(over||turn!=="w"||thinking)return;const p=g.get(s);if(selected&&targets.includes(s)){const m=g.move({from:selected,to:s,promotion:"q"});setLast([m.from,m.to]);sync();return;}setSelected(p?.color==="w"?s:null);}
+ function undo(){if(thinking||!history.length)return;g.undo();if(g.turn()==="b")g.undo();setLast(null);sync();}
+ return <main className="chesscom">
+  <header className="ccTop"><Link href="/indir" className="ccBack"><ArrowLeft size={17}/> Ay Zek</Link><Link href="/satranc" className="ccBrand"><span>♞</span> AY ZEK <i>CHESS</i></Link><div className="ccLive"><b/> Bilgisayara karşı</div></header>
+  <div className="ccShell">
+   <aside className="ccNav"><div className="ccNavLogo">♞ <b>Oyunlar</b></div><Link href="/satranc" className="ccNavActive">♟ <span>Bilgisayara karşı</span></Link><Link href="/indir" className="ccNavItem">▦ <span>Oyun merkezi</span></Link><div className="ccNavCard"><Bot size={21}/><b>Satranç becerini geliştir</b><p>Her gün pratik yap, yeni stratejiler keşfet ve daha iyi hamleler öğren.</p></div><div className="ccNavFoot">AY ZEK · ÜCRETSİZ</div></aside>
+   <section className="ccContent"><div className="ccTitle"><div><small>OYNA · BİLGİSAYARA KARŞI</small><h1>Satranç <em>oyna</em></h1><p>Bilgisayara karşı oyna. Hamlelerini planla, şah mat yap!</p></div><button className="ccFlip" onClick={()=>setFlipped(v=>!v)} title="Tahtayı çevir">⇅</button></div>
+    <div className="ccGame"><div className="ccBoardArea">
+      <div className="ccPlayer"><span className="ccAvatar botAvatar">♟</span><div><b>Ay Zek Bilgisayar</b><small>{thinking?"Hamle düşünüyor":level==="easy"?"Kolay seviye":level==="hard"?"Zor seviye":"Orta seviye"}</small></div><span className="ccRating">BOT</span></div>
+      <div className="ccBoardFrame"><div className="ccBoard">{rows.map((r,ri)=>cols.map((c,ci)=>{const s=(files[c]+(r+1)) as Square,p=g.board()[r][c],light=(r+c)%2===0,active=selected===s,possible=targets.includes(s),recent=!!last?.includes(s);return <button key={s} onClick={()=>click(s)} className={["ccSquare",light?"ccLight":"ccDark",active?"ccSelected":"",recent?"ccRecent":""].join(" ")} aria-label={s}>{ci===0&&<small className="ccRank">{r+1}</small>}{ri===7&&<small className="ccFile">{files[c]}</small>}{p&&<span className={p.color==="w"?"ccPiece ccWhite":"ccPiece ccBlack"}>{glyph[p.color+p.type]}</span>}{possible&&<i className={p?"ccCapture":"ccDot"}/>}</button>}))}</div></div>
+      <div className="ccPlayer ccYou"><span className="ccAvatar youAvatar">♙</span><div><b>Sen · Beyaz</b><small>{turn==="w"&&!over?"Hamleni yap":over?"Oyun sona erdi":"Sıra rakipte"}</small></div><span className="ccRating">YOU</span></div>
+    </div>
+    <aside className="ccPanel"><div className="ccStatus"><span className={thinking?"ccPulse":""}/><b>{status}</b></div><div className="ccPanelLabel">RAKİP SEVİYESİ</div><div className="ccLevels">{[["easy","Kolay"],["medium","Orta"],["hard","Zor"]].map(([v,l])=><button key={v} onClick={()=>setLevel(v)} className={level===v?"ccLevelOn":""}>{l}</button>)}</div><button className="ccNew" onClick={reset}><RotateCcw size={16}/> Yeni oyun</button><button className="ccUndo" disabled={!history.length||thinking} onClick={undo}><Undo2 size={16}/> Son hamleyi geri al</button>
+      <div className="ccTabs"><button className={tab==="moves"?"ccTabOn":""} onClick={()=>setTab("moves")}>Hamleler</button><button className={tab==="help"?"ccTabOn":""} onClick={()=>setTab("help")}>Nasıl oynanır?</button></div>
+      {tab==="moves"?<div className="ccMoves">{history.length?Array.from({length:Math.ceil(history.length/2)},(_,i)=><div key={i}><span>{i+1}.</span><b>{history[i*2]}</b><b>{history[i*2+1]||"…"}</b></div>):<p>İlk hamleni bekliyoruz. Beyaz taşlarla başla!</p>}</div>:<div className="ccHelp"><b>Taşını seç, hedef kareye dokun.</b><p>Yalnızca kurallara uygun hamleler yapılabilir. Piyon son sıraya ulaşınca vezire dönüşür. Rakibin şahını kaçamayacağı duruma getirerek kazan.</p></div>}
+      {over&&<div className="ccResult"><Crown size={19}/><b>{status}</b><button onClick={reset}>Tekrar oyna</button></div>}
+      <div className="ccTip"><Bot size={17}/><span>İpucu: Merkez kareleri kontrol etmeye çalış.</span></div>
+    </aside></div><footer className="ccFooter">Ay Zek Chess · Ücretsiz satranç deneyimi</footer></section>
+  </div>
+  <style jsx global>{`
+  *{box-sizing:border-box}.chesscom{min-height:100vh;background:#11130f;color:#e8e9e1;font-family:Arial,sans-serif}.ccTop{height:62px;background:#1b1d17;border-bottom:1px solid #ffffff12;display:flex;align-items:center;justify-content:space-between;padding:0 max(3%,calc((100% - 1320px)/2))}.ccBack,.ccBrand{color:#d9dccf;text-decoration:none;display:flex;align-items:center;gap:9px;font-size:12px}.ccBrand{font-size:17px;font-weight:900;letter-spacing:1px}.ccBrand span{font-size:26px;color:#a9ce7b}.ccBrand i{font-style:normal;color:#a9ce7b;font-size:9px}.ccLive{font-size:10px;color:#9ca391;display:flex;gap:8px;align-items:center}.ccLive b,.ccStatus>span{width:7px;height:7px;border-radius:50%;background:#91bd62}.ccShell{max-width:1380px;margin:auto;display:grid;grid-template-columns:215px minmax(0,1fr);gap:40px;padding:30px 25px}.ccNav{border-right:1px solid #ffffff12;padding:8px 22px 0 0;display:flex;flex-direction:column;min-height:660px}.ccNavLogo{display:flex;align-items:center;gap:10px;font-size:22px;margin-bottom:34px;color:#a8cb7c}.ccNavLogo b{font-size:14px;color:#eee}.ccNavActive,.ccNavItem{display:flex;gap:12px;align-items:center;padding:13px 12px;border-radius:9px;text-decoration:none;color:#d2e5b9;font-size:12px;background:#91bd621b;border:1px solid #91bd622c}.ccNavItem{background:none;border-color:transparent;color:#a4a795;margin-top:7px}.ccNavCard{margin-top:35px;padding:15px;border-radius:12px;border:1px solid #ffffff14;background:#ffffff06;color:#a8cc79}.ccNavCard b{display:block;color:#e3e8da;font-size:12px;margin-top:12px}.ccNavCard p{font-size:10px;line-height:1.7;color:#9a9f8f}.ccNavFoot{margin-top:auto;color:#666d5c;font-size:9px;letter-spacing:1.5px;padding:12px}.ccContent{max-width:1040px;min-width:0}.ccTitle{display:flex;justify-content:space-between;align-items:center;margin:2px 0 23px}.ccTitle small{color:#a8c77f;font-weight:800;font-size:9px;letter-spacing:1.6px}.ccTitle h1{font-size:30px;letter-spacing:-1px;margin:8px 0 5px}.ccTitle h1 em{font-style:normal;color:#a8cd7a}.ccTitle p{font-size:11px;color:#9a9d8d;margin:0}.ccFlip{width:38px;height:38px;border:1px solid #ffffff20;background:#ffffff08;border-radius:9px;color:#d4e5bd;font-size:22px;cursor:pointer}.ccGame{display:grid;grid-template-columns:minmax(330px, min(65%, 640px)) minmax(225px,1fr);gap:20px;align-items:start}.ccBoardArea{min-width:0}.ccPlayer{height:49px;display:flex;align-items:center;gap:10px;padding:0 4px}.ccAvatar{width:33px;height:33px;border-radius:9px;background:#303329;display:grid;place-items:center;font-size:23px}.botAvatar{color:#e8e8db}.youAvatar{background:#e0e8d5;color:#30382a}.ccPlayer>div{flex:1}.ccPlayer b,.ccPlayer small{display:block}.ccPlayer b{font-size:11px}.ccPlayer small{font-size:9px;color:#989d8d;margin-top:4px}.ccRating{font-size:9px;color:#b2b9a4;border:1px solid #ffffff1c;padding:4px 6px;border-radius:5px}.ccBoardFrame{padding:7px;background:#2a2d23;border-radius:5px;box-shadow:0 18px 45px #0005}.ccBoard{width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);overflow:hidden}.ccSquare{position:relative;border:0;display:grid;place-items:center;padding:0;cursor:pointer;min-width:0;min-height:0}.ccLight{background:#e9e3d2}.ccDark{background:#82a36b}.ccSelected{background:#f2e56b!important}.ccRecent.ccLight{background:#e0dc8d}.ccRecent.ccDark{background:#a9bd67}.ccPiece{font-family:Georgia,serif;font-size:clamp(27px,4.7vw,58px);line-height:1;z-index:1;user-select:none}.ccWhite{color:#fffdf3;text-shadow:0 2px 2px #273021,1px 0 1px #273021,-1px 0 1px #273021}.ccBlack{color:#262b22;text-shadow:0 1px 1px #ffffff77}.ccRank,.ccFile{position:absolute;font-size:9px;font-weight:800;z-index:2;pointer-events:none}.ccRank{top:3px;left:4px}.ccFile{bottom:3px;right:4px}.ccLight .ccRank,.ccLight .ccFile{color:#82a36b}.ccDark .ccRank,.ccDark .ccFile{color:#f3f0df}.ccDot{width:24%;height:24%;border-radius:50%;background:#263c2880}.ccCapture{position:absolute;inset:3px;border:4px solid #253b2780;border-radius:50%}.ccYou{margin-top:3px}.ccPanel{background:#1b1e17;border:1px solid #ffffff15;border-radius:12px;padding:16px;min-height:350px}.ccStatus{display:flex;align-items:center;gap:9px;font-size:12px;padding:2px 0 16px;border-bottom:1px solid #ffffff12}.ccPulse{animation:ccPulse 1s infinite}.ccPanelLabel{font-size:9px;letter-spacing:1.3px;color:#999f8d;font-weight:800;margin:17px 0 9px}.ccLevels{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.ccLevels button{border:1px solid #ffffff1c;background:#ffffff07;color:#b3b8a8;border-radius:7px;padding:9px 2px;font-size:10px;cursor:pointer}.ccLevels button.ccLevelOn{border-color:#a0c97588;background:#91bd6220;color:#d7edbc}.ccNew,.ccUndo{width:100%;display:flex;justify-content:center;align-items:center;gap:8px;border:0;border-radius:8px;padding:11px;margin-top:12px;background:#91bd62;color:#1a2413;font-size:10px;font-weight:800;cursor:pointer}.ccUndo{margin-top:7px;background:#ffffff0a;border:1px solid #ffffff1d;color:#d1d7c7}.ccUndo:disabled{opacity:.35;cursor:not-allowed}.ccTabs{display:flex;gap:16px;border-bottom:1px solid #ffffff16;margin-top:22px}.ccTabs button{border:0;background:none;color:#899080;font-size:10px;padding:0 0 10px;cursor:pointer}.ccTabs button.ccTabOn{color:#d5e8bd;border-bottom:2px solid #a3c976}.ccMoves{max-height:170px;overflow:auto;padding-top:8px}.ccMoves>div{display:grid;grid-template-columns:27px 1fr 1fr;padding:8px 5px;border-radius:4px;font-size:11px}.ccMoves>div:nth-child(odd){background:#ffffff08}.ccMoves span{color:#858b79}.ccMoves b{font-weight:500}.ccMoves p,.ccHelp p{font-size:10px;color:#959b89;line-height:1.7}.ccHelp{padding:13px 2px}.ccHelp b{font-size:10px}.ccResult{margin-top:12px;padding:11px;background:#91bd621a;border-radius:8px;color:#c6e3a4;display:flex;align-items:center;gap:7px;flex-wrap:wrap}.ccResult b{font-size:10px;flex:1}.ccResult button{width:100%;border:0;border-radius:6px;padding:8px;background:#91bd62;color:#1a2413;font-size:10px;font-weight:800}.ccTip{display:flex;gap:8px;align-items:flex-start;margin-top:15px;padding:10px;border-radius:8px;background:#91bd6212;color:#c0dba0;font-size:10px;line-height:1.5}.ccFooter{text-align:center;color:#68705d;font-size:9px;margin-top:27px}@keyframes ccPulse{50%{opacity:.25}}@media(max-width:1050px){.ccShell{grid-template-columns:1fr;gap:20px}.ccNav{display:none}.ccContent{margin:auto;width:100%;max-width:850px}}@media(max-width:650px){.ccShell{padding:18px 10px}.ccGame{grid-template-columns:1fr;gap:10px}.ccBoardArea{max-width:560px;width:100%;margin:auto}.ccPanel{max-width:560px;width:100%;margin:auto}.ccPiece{font-size:clamp(27px,8vw,52px)}.ccTitle{margin:0 5px 15px}.ccTitle h1{font-size:25px}.ccTop{padding:0 13px}.ccLive{font-size:0}}
+  `}</style>
+ </main>;
 }
