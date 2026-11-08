@@ -47,7 +47,8 @@ export default function OfflineChatPage() {
   useEffect(() => {
     try {
       setName(localStorage.getItem(NAME_KEY) || "Misafir");
-      setRoom(localStorage.getItem(ROOM_KEY) || "genel");
+      const inviteRoom = new URLSearchParams(window.location.search).get("oda");
+      setRoom(inviteRoom?.trim() || localStorage.getItem(ROOM_KEY) || "genel");
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setMessages(JSON.parse(saved));
     } catch {}
