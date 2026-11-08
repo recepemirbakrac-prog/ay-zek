@@ -8,7 +8,7 @@ export function getRealtimeClient() {
   if (!url || !key) return null;
   if (!client) client = createClient(url, key, {
     realtime: { params: { eventsPerSecond: 10 } },
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
   return client;
 }
