@@ -19,7 +19,7 @@ const ROOM_KEY = "ayzek-chat-room-v1";
 const makeId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
 const clock = () => new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
-function ChatRoom() {
+function ChatRoom({ initialName }: { initialName: string }) {
   const [name, setName] = useState("Misafir");
   const [room, setRoom] = useState("genel");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -58,7 +58,7 @@ function ChatRoom() {
 
   useEffect(() => {
     try {
-      setName(localStorage.getItem(NAME_KEY) || "Misafir");
+      setName(initialName || localStorage.getItem(NAME_KEY) || "Misafir");
       const inviteRoom = new URLSearchParams(window.location.search).get("oda");
       setRoom(inviteRoom?.trim() || localStorage.getItem(ROOM_KEY) || "genel");
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -350,53 +350,64 @@ export default function OfflineChatPage() {
   const [session,setSession] = useState<any>(null);
   const [loading,setLoading] = useState(true);
   const [mode,setMode] = useState<"login"|"signup">("login");
-  const [email,setEmail] = useState("");
+  const [username,setUsername] = useState("");
   const [password,setPassword] = useState("");
   const [error,setError] = useState("");
+  const [busy,setBusy] = useState(false);
+
   useEffect(()=>{
     if(!supabase){setLoading(false);setError("Supabase bağlantısı bulunamadı.");return;}
     supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false);});
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>setSession(s));
     return ()=>subscription.unsubscribe();
   },[supabase]);
-  const resendConfirmation=async()=>{
-    if(!supabase||!email.trim()){setError("Önce e-posta adresini yaz.");return;}
-    setError("");
-    const {error:resendError}=await supabase.auth.resend({
-      type:"signup",
-      email:email.trim(),
-      options:{emailRedirectTo:"https://ay-zek.vercel.app/internetsiz-sohbet"}
-    });
-    setError(resendError
-      ? (/rate limit|after \d+ seconds/i.test(resendError.message) ? "E-posta gönderme sınırına ulaşıldı. Biraz bekleyip yalnızca bir kez tekrar dene." : "Doğrulama e-postası gönderilemedi: "+resendError.message)
-      : "Yeni doğrulama bağlantısı gönderildi. En son gelen e-postayı kullan; eski bağlantıları açma.");
-  };
+
   const submit=async()=>{
-    if(!supabase)return;
-    setError("");
-    const result=mode==="signup"
-      ? await supabase.auth.signUp({email:email.trim(),password,options:{emailRedirectTo:"https://ay-zek.vercel.app/internetsiz-sohbet"}})
-      : await supabase.auth.signInWithPassword({email:email.trim(),password});
-    if(result.error){
-      const message=result.error.message||"Bir hata oluştu.";
-      setError(/email not confirmed/i.test(message)
-        ? "E-posta adresin henüz doğrulanmamış. Gelen kutundaki Ay Zek doğrulama bağlantısına tıkla veya aşağıdan yeni bağlantı iste."
-        : /invalid login credentials/i.test(message) ? "E-posta veya şifre hatalı." : message);
-    } else if(mode==="signup"&&!result.data.session){
-      setError("Kayıt başarılı. E-posta adresini doğrulaman gerekiyor. Gelen kutunu ve spam klasörünü kontrol et.");
-    }
+    if(!supabase||busy)return;
+    const clean=username.trim().toLowerCase();
+    if(!/^[a-z0-9_]{3,20}$/.test(clean)){setError("Kullanıcı adı 3-20 karakter olmalı; harf, rakam ve _ kullan.");return;}
+    if(password.length<8){setError("Şifre en az 8 karakter olmalı.");return;}
+    setBusy(true);setError("");
+    try {
+      if(mode==="signup"){
+        const response=await fetch("https://rogjptnkmauzywdhaxtu.supabase.co/functions/v1/username-auth",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","apikey":process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""},
+          body:JSON.stringify({username:clean,password})
+        });
+        const payload=await response.json();
+        if(!response.ok)throw new Error(payload.error||"Hesap oluşturulamadı.");
+      }
+      const {data,error:loginError}=await supabase.auth.signInWithPassword({
+        email:clean+"@username.ayzek.invalid",password
+      });
+      if(loginError)throw new Error(mode==="login"?"Kullanıcı adı veya şifre hatalı.":loginError.message);
+      setSession(data.session);
+      localStorage.setItem(NAME_KEY,clean);
+    } catch(e:any) {
+      setError(e?.message||"Bir hata oluştu.");
+    } finally {setBusy(false);}
   };
+
+  const logout=async()=>{await supabase?.auth.signOut();setSession(null);};
+
   if(loading)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",background:"#24232d",color:"white"}}>Ay Zek yükleniyor…</main>;
   if(!session)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:20,background:"radial-gradient(ellipse at 20% 10%,#51446b,#24232d)",fontFamily:"system-ui"}}>
-    <section style={{width:"min(420px,100%)",padding:30,borderRadius:24,background:"#191725",color:"white",border:"1px solid #ffffff20"}}>
-      <h1>Ay Zek Sohbet</h1><p>Mesajlaşmak için hesabına giriş yap veya ücretsiz kayıt ol.</p>
-      <div style={{display:"flex",gap:8,margin:"18px 0"}}><button onClick={()=>setMode("login")}>Giriş yap</button><button onClick={()=>setMode("signup")}>Kayıt ol</button></div>
-      <input type="email" placeholder="E-posta" value={email} onChange={e=>setEmail(e.target.value)} style={{display:"block",width:"100%",padding:13,marginBottom:12}}/>
-      <input type="password" placeholder="Şifre (en az 6 karakter)" value={password} onChange={e=>setPassword(e.target.value)} style={{display:"block",width:"100%",padding:13,marginBottom:14}}/>
-      <button onClick={()=>void submit()} style={{width:"100%",padding:14,background:"#935be8",color:"white",border:0,borderRadius:10}}>{mode==="login"?"Giriş yap":"Hesap oluştur"}</button>
-      {error&&<div style={{color:"#ffc2d5",fontSize:13,lineHeight:1.5}}>{error}
-        {(mode==="login"&&/doğrulanmamış/i.test(error))&&<button onClick={()=>void resendConfirmation()} style={{display:"block",marginTop:10,padding:"10px 12px",border:0,borderRadius:9,background:"#49336a",color:"white",cursor:"pointer"}}>Doğrulama e-postasını yeniden gönder</button>}
-      </div>}
-    </section></main>;
-  return <ChatRoom/>;
+    <section style={{width:"min(420px,100%)",padding:30,borderRadius:24,background:"#191725",color:"white",border:"1px solid #ffffff20",boxShadow:"0 24px 70px #0007"}}>
+      <h1 style={{fontSize:30,margin:"0 0 8px"}}>Ay Zek Sohbet</h1>
+      <p style={{color:"#bcb4cb",marginTop:0}}>E-posta gerektirmeden sohbete katıl.</p>
+      <div style={{display:"flex",gap:8,margin:"20px 0"}}>
+        <button onClick={()=>{setMode("login");setError("");}} style={{flex:1,padding:12,border:0,borderRadius:9,background:mode==="login"?"#8957d8":"#302b3b",color:"white"}}>Giriş yap</button>
+        <button onClick={()=>{setMode("signup");setError("");}} style={{flex:1,padding:12,border:0,borderRadius:9,background:mode==="signup"?"#8957d8":"#302b3b",color:"white"}}>Kayıt ol</button>
+      </div>
+      <label style={{display:"block",fontSize:13,marginBottom:6}}>Kullanıcı adı</label>
+      <input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} placeholder="ör. emir_123" style={{display:"block",width:"100%",boxSizing:"border-box",padding:13,marginBottom:14,borderRadius:10,border:"1px solid #51465f",background:"#100f18",color:"white"}}/>
+      <label style={{display:"block",fontSize:13,marginBottom:6}}>Şifre</label>
+      <input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void submit();}} placeholder="En az 8 karakter" style={{display:"block",width:"100%",boxSizing:"border-box",padding:13,marginBottom:16,borderRadius:10,border:"1px solid #51465f",background:"#100f18",color:"white"}}/>
+      <button disabled={busy} onClick={()=>void submit()} style={{width:"100%",padding:14,border:0,borderRadius:10,background:"linear-gradient(120deg,#8b5cf6,#d946ef)",color:"white",fontWeight:700,opacity:busy?.7:1}}>{busy?"Bekle…":mode==="login"?"Giriş yap":"Ücretsiz hesap oluştur"}</button>
+      {error&&<p role="alert" style={{color:"#ffc2d5",fontSize:13,lineHeight:1.5}}>{error}</p>}
+      <p style={{fontSize:12,color:"#aaa2b7",marginBottom:0}}>Kullanıcı adı: 3-20 karakter. Şifre: en az 8 karakter.</p>
+    </section>
+  </main>;
+  return <><ChatRoom initialName={session.user?.user_metadata?.username || session.user?.email?.split("@")[0] || "Kullanıcı"}/><button onClick={()=>void logout()} style={{position:"fixed",right:16,bottom:16,zIndex:50,padding:"10px 14px",borderRadius:10,border:0,background:"#382a52",color:"white"}}>Çıkış yap</button></>;
 }
