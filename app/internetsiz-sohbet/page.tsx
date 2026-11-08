@@ -359,14 +359,30 @@ export default function OfflineChatPage() {
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>setSession(s));
     return ()=>subscription.unsubscribe();
   },[supabase]);
+  const resendConfirmation=async()=>{
+    if(!supabase||!email.trim()){setError("Önce e-posta adresini yaz.");return;}
+    setError("");
+    const {error:resendError}=await supabase.auth.resend({
+      type:"signup",
+      email:email.trim(),
+      options:{emailRedirectTo:"https://ay-zek.vercel.app/internetsiz-sohbet"}
+    });
+    setError(resendError ? "Doğrulama e-postası gönderilemedi: "+resendError.message : "Doğrulama bağlantısı yeniden gönderildi. Gelen kutunu ve spam klasörünü kontrol et.");
+  };
   const submit=async()=>{
     if(!supabase)return;
     setError("");
     const result=mode==="signup"
       ? await supabase.auth.signUp({email:email.trim(),password})
       : await supabase.auth.signInWithPassword({email:email.trim(),password});
-    if(result.error)setError(result.error.message);
-    else if(mode==="signup"&&!result.data.session)setError("Kayıt başarılı. E-postanı doğrula, sonra giriş yap.");
+    if(result.error){
+      const message=result.error.message||"Bir hata oluştu.";
+      setError(/email not confirmed/i.test(message)
+        ? "E-posta adresin henüz doğrulanmamış. Gelen kutundaki Ay Zek doğrulama bağlantısına tıkla veya aşağıdan yeni bağlantı iste."
+        : /invalid login credentials/i.test(message) ? "E-posta veya şifre hatalı." : message);
+    } else if(mode==="signup"&&!result.data.session){
+      setError("Kayıt başarılı. E-posta adresini doğrulaman gerekiyor. Gelen kutunu ve spam klasörünü kontrol et.");
+    }
   };
   if(loading)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",background:"#24232d",color:"white"}}>Ay Zek yükleniyor…</main>;
   if(!session)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:20,background:"radial-gradient(ellipse at 20% 10%,#51446b,#24232d)",fontFamily:"system-ui"}}>
@@ -376,7 +392,9 @@ export default function OfflineChatPage() {
       <input type="email" placeholder="E-posta" value={email} onChange={e=>setEmail(e.target.value)} style={{display:"block",width:"100%",padding:13,marginBottom:12}}/>
       <input type="password" placeholder="Şifre (en az 6 karakter)" value={password} onChange={e=>setPassword(e.target.value)} style={{display:"block",width:"100%",padding:13,marginBottom:14}}/>
       <button onClick={()=>void submit()} style={{width:"100%",padding:14,background:"#935be8",color:"white",border:0,borderRadius:10}}>{mode==="login"?"Giriş yap":"Hesap oluştur"}</button>
-      {error&&<p style={{color:"#ffc2d5",fontSize:13}}>{error}</p>}
+      {error&&<div style={{color:"#ffc2d5",fontSize:13,lineHeight:1.5}}>{error}
+        {(mode==="login"&&/doğrulanmamış/i.test(error))&&<button onClick={()=>void resendConfirmation()} style={{display:"block",marginTop:10,padding:"10px 12px",border:0,borderRadius:9,background:"#49336a",color:"white",cursor:"pointer"}}>Doğrulama e-postasını yeniden gönder</button>}
+      </div>}
     </section></main>;
   return <ChatRoom/>;
 }
