@@ -85,27 +85,43 @@ export default function OfflineChatPage() {
     const channel = supabase.channel("ayzek-room-" + room, {
       config: { broadcast: { self: false }, presence: { key: makeId() } },
     });
-    channel
-      .on("broadcast", { event: "chat-message" }, ({ payload }: { payload: ChatMessage }) => {
-        if (!alive || !payload?.id) return;
-        setMessages(prev => prev.some(m => m.id === payload.id) ? prev : [...prev, { ...payload, mine: false }].slice(-250));
-      })
-      .on("presence", { event: "sync" }, () => {
-        if (alive) setOnlineCount(Object.keys(channel.presenceState()).length);
-      })
-      .subscribe(async (status: string) => {
-        if (!alive) return;
-        setConnected(status === "SUBSCRIBED");
-        if (status === "SUBSCRIBED") await channel.track({ name, online_at: new Date().toISOString() });
-      });
+    const loadHistory = async () => {
+      const { data, error } = await supabase.from("chat_messages")
+        .select("id, sender, body, file_name, image_data, created_at")
+        .eq("room_code", room).order("created_at", { ascending: true }).limit(250);
+      if (!alive) return;
+      if (error) { notify("Mesaj geçmişi yüklenemedi: " + error.message); return; }
+      setMessages((data || []).map((row: any) => ({
+        id: row.id, sender: row.sender, text: row.body || "",
+        time: new Date(row.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit",minute:"2-digit"}),
+        mine: row.sender === name, fileName: row.file_name || undefined, image: row.image_data || undefined,
+      })));
+    };
+    void loadHistory();
+    channel.on("postgres_changes", {
+      event: "INSERT", schema: "public", table: "chat_messages", filter: "room_code=eq." + room,
+    }, ({ new: row }: { new: any }) => {
+      if (!alive || !row?.id) return;
+      const message: ChatMessage = {
+        id: row.id, sender: row.sender, text: row.body || "",
+        time: new Date(row.created_at).toLocaleTimeString("tr-TR", {hour:"2-digit",minute:"2-digit"}),
+        mine: row.sender === name, fileName: row.file_name || undefined, image: row.image_data || undefined,
+      };
+      setMessages(prev => prev.some(m => m.id === message.id) ? prev : [...prev, message].slice(-250));
+    });
+    channel.on("presence", { event: "sync" }, () => {
+      if (alive) setOnlineCount(Object.keys(channel.presenceState()).length);
+    }).subscribe(async (status: string) => {
+      if (!alive) return;
+      setConnected(status === "SUBSCRIBED");
+      if (status === "SUBSCRIBED") await channel.track({ name, online_at: new Date().toISOString() });
+    });
     channelRef.current = channel;
     return () => {
-      alive = false;
-      setConnected(false);
-      channelRef.current = null;
+      alive = false; setConnected(false); channelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [room, name, ready]);
+  }, [room, name, ready, notify]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -113,23 +129,26 @@ export default function OfflineChatPage() {
     const text = draft.trim();
     if (!text && !fileData) return;
     const supabase = getRealtimeClient();
-    if (!supabase || !connected || !channelRef.current) {
-      notify("Canlı sohbet bağlantısı yok. Ayarlar bölümünden Supabase bilgilerini ekleyin.");
-      return;
-    }
-    const message: ChatMessage = {
-      id: makeId(), sender: name, text, time: clock(), mine: true,
+    if (!supabase || !connected) { notify("Canlı sohbet bağlantısı yok. Biraz sonra tekrar dene."); return; }
+    const id = makeId();
+    const optimistic: ChatMessage = {
+      id, sender: name, text, time: clock(), mine: true,
       ...(fileData?.image ? { image: fileData.image } : {}),
       ...(fileData?.name ? { fileName: fileData.name } : {}),
     };
-    setMessages(prev => [...prev, message].slice(-250));
-    setDraft("");
-    setFileData(null);
-    const result = await channelRef.current.send({ type: "broadcast", event: "chat-message", payload: { ...message, mine: false } });
-    if (result !== "ok") notify("Mesaj gönderilemedi. Bağlantını kontrol et.");
+    setMessages(prev => [...prev, optimistic].slice(-250));
+    setDraft(""); setFileData(null);
+    const { error } = await supabase.from("chat_messages").insert({
+      id, room_code: room, sender: name, body: text,
+      file_name: optimistic.fileName || null, image_data: optimistic.image || null,
+    });
+    if (error) {
+      setMessages(prev => prev.filter(m => m.id !== id));
+      notify("Mesaj gönderilemedi: " + error.message);
+    }
   };
 
-  const joinRoom = () => {
+    const joinRoom = () => {
     const value = window.prompt("Sohbet kodunu gir veya yeni bir kod oluştur:", room);
     if (!value?.trim()) return;
     const clean = value.trim().toLocaleLowerCase("tr").replace(/[^a-z0-9-_]/g, "-").slice(0, 40);
