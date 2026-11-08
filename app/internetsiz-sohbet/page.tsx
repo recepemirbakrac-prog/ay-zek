@@ -35,6 +35,7 @@ export default function OfflineChatPage() {
   const [notifications, setNotifications] = useState(true);
   const [fileData, setFileData] = useState<{name:string; image?:string} | null>(null);
   const [ready, setReady] = useState(false);
+  const [loadedRoom, setLoadedRoom] = useState("");
   const channelRef = useRef<any>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -64,14 +65,16 @@ export default function OfflineChatPage() {
     if (!ready) return;
     localStorage.setItem(ROOM_KEY, room);
     const all: Record<string, ChatMessage[]> = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    if (loadedRoom !== room) return;
     all[room] = messages.slice(-250);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-  }, [messages, room, ready]);
+  }, [messages, room, ready, loadedRoom]);
 
   useEffect(() => {
     if (!ready) return;
     const all: Record<string, ChatMessage[]> = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     setMessages(all[room] || []);
+    setLoadedRoom(room);
   }, [room, ready]);
 
   useEffect(() => {
