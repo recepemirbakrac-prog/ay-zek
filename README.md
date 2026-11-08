@@ -21,3 +21,19 @@ Kart veya ücretli AI Gateway gerekmez. Ücretsiz Gemini kullanım limitleri Goo
 
 - `/` ana sayfası sohbet ekranına yönlendirir.
 - `/chat` Ay Zek sohbet uygulamasıdır.
+
+
+## Gerçek zamanlı sohbet kurulumu
+
+`/internetsiz-sohbet` sayfası Supabase Realtime Broadcast ve Presence kullanır. Farklı cihazlardaki kişilerin aynı odada mesajlaşabilmesi için:
+
+1. Supabase'de ücretsiz bir proje oluşturun: https://supabase.com/dashboard
+2. Project Settings → API bölümünden Project URL ve publishable/anon public key değerlerini alın.
+3. Vercel → ay-zek → Settings → Environment Variables bölümüne şu iki değişkeni ekleyin:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. İkisini Production, Preview ve Development ortamlarına ekleyip yeniden deploy edin.
+5. Supabase Realtime ayarlarında public Broadcast ve Presence kanallarına izin verin. Bu örnek odalar herkese açık oda kodları kullanır; özel/gizli sohbet için kimlik doğrulama ve kanal politikaları eklenmelidir.
+6. Arkadaşlarınızla aynı oda kodunu paylaşın. İki taraf da çevrimiçi ve aynı odadayken mesajlar gerçek zamanlı iletilir.
+
+Mesaj geçmişi cihazda saklanır; Realtime Broadcast mesajları sunucuda kalıcı bir veritabanına yazmaz. Sesli/görüntülü arama ve büyük dosya yükleme bu sürümde etkin değildir.
