@@ -16,6 +16,18 @@ type ChatMessage = {
 const STORAGE_KEY = "ayzek-live-chat-v2";
 const NAME_KEY = "ayzek-chat-name-v1";
 const ROOM_KEY = "ayzek-chat-room-v1";
+function readSavedRooms(): Record<string, ChatMessage[]> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, value]) => Array.isArray(value))) as Record<string, ChatMessage[]>;
+  } catch { return {}; }
+}
+function saveSavedRooms(rooms: Record<string, ChatMessage[]>) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms)); } catch (error) { console.warn("Sohbet geçmişi kaydedilemedi:", error); }
+}
 const makeId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
 const clock = () => new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
@@ -61,8 +73,8 @@ function ChatRoom({ initialName }: { initialName: string }) {
       setName(initialName || localStorage.getItem(NAME_KEY) || "Misafir");
       const inviteRoom = new URLSearchParams(window.location.search).get("oda");
       setRoom(inviteRoom?.trim() || localStorage.getItem(ROOM_KEY) || "genel");
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) { const parsed: unknown = JSON.parse(saved); const data = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, ChatMessage[]> : {}; setMessages(Array.isArray(data["genel"]) ? data["genel"] : []); }
+      const data = readSavedRooms();
+      setMessages(Array.isArray(data["genel"]) ? data["genel"] : []);
     } catch {}
     setReady(true);
   }, []);
@@ -75,17 +87,16 @@ function ChatRoom({ initialName }: { initialName: string }) {
   useEffect(() => {
     if (!ready) return;
     localStorage.setItem(ROOM_KEY, room);
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    const all: Record<string, ChatMessage[]> = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, ChatMessage[]> : {};
+    const all = readSavedRooms();
     if (loadedRoom !== room) return;
     all[room] = messages.slice(-250);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    saveSavedRooms(all);
   }, [messages, room, ready, loadedRoom]);
 
   useEffect(() => {
     if (!ready) return;
-    const all: Record<string, ChatMessage[]> = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    setMessages(all[room] || []);
+    const all = readSavedRooms();
+    setMessages(Array.isArray(all[room]) ? all[room] : []);
     setLoadedRoom(room);
   }, [room, ready]);
 
