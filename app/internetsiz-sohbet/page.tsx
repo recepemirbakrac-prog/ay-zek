@@ -404,22 +404,45 @@ export default function OfflineChatPage() {
   const logout=async()=>{await supabase?.auth.signOut();setSession(null);};
 
   if(loading)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",background:"#24232d",color:"white"}}>Ay Zek yükleniyor…</main>;
-  if(!session)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:20,background:"radial-gradient(ellipse at 20% 10%,#51446b,#24232d)",fontFamily:"system-ui"}}>
-    <section style={{width:"min(420px,100%)",padding:30,borderRadius:24,background:"#191725",color:"white",border:"1px solid #ffffff20",boxShadow:"0 24px 70px #0007"}}>
-      <h1 style={{fontSize:30,margin:"0 0 8px"}}>Ay Zek Sohbet</h1>
-      <p style={{color:"#bcb4cb",marginTop:0}}>E-posta gerektirmeden sohbete katıl.</p>
-      <div style={{display:"flex",gap:8,margin:"20px 0"}}>
-        <button onClick={()=>{setMode("login");setError("");}} style={{flex:1,padding:12,border:0,borderRadius:9,background:mode==="login"?"#8957d8":"#302b3b",color:"white"}}>Giriş yap</button>
-        <button onClick={()=>{setMode("signup");setError("");}} style={{flex:1,padding:12,border:0,borderRadius:9,background:mode==="signup"?"#8957d8":"#302b3b",color:"white"}}>Kayıt ol</button>
+  if(!session)return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:"32px 18px",background:"radial-gradient(circle at 12% 15%,#563b87 0,transparent 34%),radial-gradient(circle at 88% 82%,#8d347f 0,transparent 30%),linear-gradient(135deg,#100e1b,#211833 55%,#171322)",fontFamily:"Inter,system-ui,sans-serif",color:"#fff",overflow:"hidden"}}>
+    <section style={{width:"min(980px,100%)",minHeight:570,display:"grid",gridTemplateColumns:"1.05fr .95fr",borderRadius:30,overflow:"hidden",background:"#1b1728eF",border:"1px solid #ffffff20",boxShadow:"0 35px 100px #08051199",backdropFilter:"blur(18px)"}}>
+      <div style={{padding:"clamp(28px,5vw,58px)",display:"flex",flexDirection:"column",justifyContent:"space-between",background:"linear-gradient(150deg,#7044b5 0%,#44276f 48%,#271c45 100%)",position:"relative",isolation:"isolate"}}>
+        <div style={{position:"absolute",width:270,height:270,borderRadius:"50%",border:"1px solid #ffffff20",right:-110,top:100,zIndex:-1}}/>
+        <div style={{position:"absolute",width:190,height:190,borderRadius:"50%",background:"#e879f933",filter:"blur(35px)",left:-80,bottom:20,zIndex:-1}}/>
+        <div>
+          <div style={{width:54,height:54,borderRadius:17,display:"grid",placeItems:"center",background:"linear-gradient(135deg,#fff,#e7caff)",color:"#61358c",fontSize:25,fontWeight:900,boxShadow:"0 8px 30px #170b3355"}}>A</div>
+          <div style={{marginTop:52,fontSize:12,fontWeight:800,letterSpacing:3,color:"#e7d7ff"}}>AY ZEK • MESAJLAŞMA</div>
+          <h1 style={{fontSize:"clamp(34px,5vw,54px)",lineHeight:1.04,letterSpacing:-2,margin:"15px 0 16px",fontWeight:850}}>Sohbetin<br/>yeni <span style={{color:"#f5b7f2"}}>hali.</span></h1>
+          <p style={{maxWidth:350,color:"#e4d8f5",fontSize:15,lineHeight:1.8,margin:0}}>Arkadaşlarınla aynı odada buluş, mesajlarını paylaş ve bağlantıda kal.</p>
+        </div>
+        <div style={{display:"grid",gap:13,marginTop:45}}>
+          {[[ "✦","Canlı sohbet odaları" ],[ "⌁","Sesli ve görüntülü görüşme" ],[ "◈","Kullanıcı adıyla kolay giriş" ]].map(([symbol,label])=><div key={label} style={{display:"flex",alignItems:"center",gap:12,color:"#f3eaff",fontSize:13}}><span style={{width:30,height:30,borderRadius:10,display:"grid",placeItems:"center",background:"#ffffff20",fontSize:16}}>{symbol}</span>{label}</div>)}
+        </div>
+        <div style={{fontSize:11,color:"#d4c1eb",marginTop:35}}>Ay Zek ile sohbet etmek çok kolay.</div>
       </div>
-      <label style={{display:"block",fontSize:13,marginBottom:6}}>Kullanıcı adı</label>
-      <input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} placeholder="ör. emir_123" style={{display:"block",width:"100%",boxSizing:"border-box",padding:13,marginBottom:14,borderRadius:10,border:"1px solid #51465f",background:"#100f18",color:"white"}}/>
-      <label style={{display:"block",fontSize:13,marginBottom:6}}>Şifre</label>
-      <input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void submit();}} placeholder="En az 8 karakter" style={{display:"block",width:"100%",boxSizing:"border-box",padding:13,marginBottom:16,borderRadius:10,border:"1px solid #51465f",background:"#100f18",color:"white"}}/>
-      <button disabled={busy} onClick={()=>void submit()} style={{width:"100%",padding:14,border:0,borderRadius:10,background:"linear-gradient(120deg,#8b5cf6,#d946ef)",color:"white",fontWeight:700,opacity:busy ? 0.7 : 1}}>{busy?"Bekle…":mode==="login"?"Giriş yap":"Ücretsiz hesap oluştur"}</button>
-      {error&&<p role="alert" style={{color:"#ffc2d5",fontSize:13,lineHeight:1.5}}>{error}</p>}
-      <p style={{fontSize:12,color:"#aaa2b7",marginBottom:0}}>Kullanıcı adı: 3-20 karakter. Şifre: en az 8 karakter.</p>
+      <div style={{padding:"clamp(26px,4vw,48px)",display:"flex",flexDirection:"column",justifyContent:"center",background:"linear-gradient(160deg,#211b30,#171421)"}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:2,color:"#c39aff",marginBottom:12}}>HOŞ GELDİN</div>
+        <h2 style={{fontSize:29,letterSpacing:-.8,margin:"0 0 9px"}}>{mode==="login"?"Hesabına giriş yap":"Aramıza katıl"}</h2>
+        <p style={{color:"#aaa1ba",fontSize:13,lineHeight:1.6,margin:"0 0 25px"}}>{mode==="login"?"Sohbetlerine kaldığın yerden devam et.":"Ücretsiz hesabını oluştur, sohbete hemen başla."}</p>
+        <div style={{display:"flex",gap:7,padding:5,borderRadius:13,background:"#100e18",marginBottom:23}}>
+          <button onClick={()=>{setMode("login");setError("");}} style={{flex:1,padding:11,border:0,borderRadius:9,background:mode==="login"?"linear-gradient(110deg,#8b5cf6,#a855f7)":"transparent",color:"white",fontWeight:700,cursor:"pointer"}}>Giriş yap</button>
+          <button onClick={()=>{setMode("signup");setError("");}} style={{flex:1,padding:11,border:0,borderRadius:9,background:mode==="signup"?"linear-gradient(110deg,#8b5cf6,#a855f7)":"transparent",color:"white",fontWeight:700,cursor:"pointer"}}>Kayıt ol</button>
+        </div>
+        <label style={{display:"block",fontSize:12,fontWeight:650,color:"#e5def0",marginBottom:8}}>Kullanıcı adı</label>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 13px",marginBottom:17,borderRadius:12,border:"1px solid #ffffff20",background:"#100e18"}}>
+          <span style={{color:"#9d83c4",fontSize:17}}>@</span><input autoComplete="username" value={username} onChange={e=>setUsername(e.target.value)} placeholder="ör. emir_123" style={{width:"100%",padding:"15px 0",border:0,outline:0,background:"transparent",color:"white",fontSize:14}}/>
+        </div>
+        <label style={{display:"block",fontSize:12,fontWeight:650,color:"#e5def0",marginBottom:8}}>Şifre</label>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 13px",marginBottom:17,borderRadius:12,border:"1px solid #ffffff20",background:"#100e18"}}>
+          <span style={{color:"#9d83c4",fontSize:17}}>✳</span><input type="password" autoComplete={mode==="signup"?"new-password":"current-password"} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void submit();}} placeholder="En az 8 karakter" style={{width:"100%",padding:"15px 0",border:0,outline:0,background:"transparent",color:"white",fontSize:14}}/>
+        </div>
+        <button disabled={busy} onClick={()=>void submit()} style={{width:"100%",padding:15,border:0,borderRadius:12,background:"linear-gradient(110deg,#9563ed,#d45acb)",color:"white",fontWeight:800,fontSize:14,boxShadow:"0 10px 25px #8b5cf633",cursor:"pointer",opacity:busy?.7:1}}>{busy?"Lütfen bekle…":mode==="login"?"Sohbete giriş yap":"Hesabımı oluştur"} <span style={{marginLeft:5}}>→</span></button>
+        {error&&<p role="alert" style={{color:"#ffb8ca",fontSize:12,lineHeight:1.5,margin:"14px 0 0"}}>{error}</p>}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:22,color:"#8f879f",fontSize:11}}><span style={{color:"#7ee0ad"}}>●</span> E-posta gerekmez · Kullanıcı adıyla giriş</div>
+        <p style={{fontSize:11,color:"#81798f",lineHeight:1.6,margin:"14px 0 0"}}>Kullanıcı adı 3-20 karakter olmalı. Şifre en az 8 karakter olmalı.</p>
+      </div>
     </section>
+    <style jsx>{`@media(max-width:720px){section{grid-template-columns:1fr!important;min-height:0!important}section>div:first-child{padding:26px!important}section>div:first-child>div:nth-last-child(1){display:none}section>div:first-child h1{font-size:38px!important;margin-top:10px!important}section>div:first-child>div:nth-child(2){margin-top:22px!important}section>div:last-child{padding:27px!important}}`}</style>
   </main>;
   return <><ChatRoom initialName={session.user?.user_metadata?.username || session.user?.email?.split("@")[0] || "Kullanıcı"}/><button onClick={()=>void logout()} style={{position:"fixed",right:16,bottom:16,zIndex:50,padding:"10px 14px",borderRadius:10,border:0,background:"#382a52",color:"white"}}>Çıkış yap</button></>;
 }
