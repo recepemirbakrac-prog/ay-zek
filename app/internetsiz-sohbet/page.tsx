@@ -37,6 +37,17 @@ function ChatRoom() {
   const [ready, setReady] = useState(false);
   const [loadedRoom, setLoadedRoom] = useState("");
   const channelRef = useRef<any>(null);
+  const [callStatus,setCallStatus] = useState<"idle"|"calling"|"incoming"|"active">("idle");
+  const [callKind,setCallKind] = useState(false);
+  const [incomingOffer,setIncomingOffer] = useState<any>(null);
+  const [caller,setCaller] = useState("");
+  const [callError,setCallError] = useState("");
+  const callRef = useRef<any>(null);
+  const peerRef = useRef<RTCPeerConnection|null>(null);
+  const streamRef = useRef<MediaStream|null>(null);
+  const localRef = useRef<HTMLVideoElement>(null);
+  const remoteRef = useRef<HTMLVideoElement>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -125,6 +136,58 @@ function ChatRoom() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  const endCall = async (signal=true) => {
+    if(signal) await callRef.current?.send({type:"broadcast",event:"hangup",payload:{user:(await getRealtimeClient()?.auth.getUser())?.data.user?.id}});
+    peerRef.current?.close();peerRef.current=null;
+    streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null;
+    setCallStatus("idle");setIncomingOffer(null);
+  };
+  const createPeer = async (video:boolean) => {
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video});
+    streamRef.current=stream;if(localRef.current)localRef.current.srcObject=stream;
+    const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+    peerRef.current=pc;stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+    pc.ontrack=e=>{if(remoteRef.current)remoteRef.current.srcObject=e.streams[0];};
+    pc.onicecandidate=e=>{if(e.candidate)void callRef.current?.send({type:"broadcast",event:"ice",payload:{candidate:e.candidate}});};
+    pc.onconnectionstatechange=()=>{if(pc.connectionState==="connected")setCallStatus("active");if(pc.connectionState==="failed")setCallError("Arama bağlantısı kurulamadı.");};
+    return pc;
+  };
+  const beginCall = async (video:boolean) => {
+    if(!connected){notify("Arama için önce odaya bağlan.");return;}
+    try{
+      setCallKind(video);setCallStatus("calling");setCallError("");
+      const pc=await createPeer(video);const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+      await callRef.current?.send({type:"broadcast",event:"offer",payload:{offer,video,caller:name}});
+    }catch(e:any){setCallError(e.message||"Mikrofon/kamera izni gerekli.");setCallStatus("idle");}
+  };
+  const answerCall = async () => {
+    try{
+      if(!incomingOffer)return;
+      const pc=await createPeer(callKind);await pc.setRemoteDescription(incomingOffer);
+      const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+      await callRef.current?.send({type:"broadcast",event:"answer",payload:{answer}});
+      setCallStatus("active");
+    }catch(e:any){setCallError(e.message||"Aramaya katılınamadı.");}
+  };
+  useEffect(()=>{
+    const handler=(event:any)=>void beginCall(!!event.detail?.video);
+    window.addEventListener("ayzek-call",handler);
+    return ()=>window.removeEventListener("ayzek-call",handler);
+  },[connected,room]);
+  useEffect(()=>{
+    if(!ready)return;
+    const supabase=getRealtimeClient();if(!supabase)return;
+    const channel=supabase.channel("ayzek-call-"+room,{config:{broadcast:{self:false}}});
+    channel.on("broadcast",{event:"offer"},({payload}:any)=>{
+      setIncomingOffer(payload.offer);setCallKind(!!payload.video);setCaller(payload.caller||"Kullanıcı");setCallStatus("incoming");
+    }).on("broadcast",{event:"answer"},async({payload}:any)=>{
+      if(peerRef.current&&payload.answer){await peerRef.current.setRemoteDescription(payload.answer);setCallStatus("active");}
+    }).on("broadcast",{event:"ice"},async({payload}:any)=>{
+      if(peerRef.current&&payload.candidate){try{await peerRef.current.addIceCandidate(payload.candidate);}catch{}}
+    }).on("broadcast",{event:"hangup"},()=>void endCall(false)).subscribe();
+    callRef.current=channel;
+    return ()=>{void supabase.removeChannel(channel);void endCall(false);};
+  },[room,ready]);
   const send = async () => {
     const text = draft.trim();
     if (!text && !fileData) return;
@@ -243,6 +306,13 @@ function ChatRoom() {
             {menu&&<div className="menu-pop"><button onClick={changeName}><UserRound size={14}/> Görünen adını değiştir</button><button onClick={invite}><Copy size={14}/> Davet bağlantısını kopyala</button><button onClick={clearRoom}><Trash2 size={14}/> Bu cihazdaki mesajları sil</button><button onClick={()=>{setMenu(false);setDetails(true);}}><Info size={14}/> Oda bilgisi</button></div>}
           </header>
           {showSearch&&<label className="searchbox" style={{margin:"8px 14px 0"}}><Search size={15}/><input autoFocus placeholder="Bu odada mesaj ara..." value={search} onChange={e=>setSearch(e.target.value)}/><button className="icon-btn" onClick={()=>{setShowSearch(false);setSearch("");}}><X size={14}/></button></label>}
+          {callStatus!=="idle"&&<div style={{padding:12,background:"#171326",color:"white",display:"grid",gap:8}}>
+            <b>{callStatus==="incoming"?caller+" arıyor":callStatus==="calling"?"Aranıyor…":"Görüşme devam ediyor"}</b>
+            {callError&&<span>{callError}</span>}
+            <div style={{display:"flex",gap:8}}><video ref={remoteRef} autoPlay playsInline style={{width:180,maxWidth:"48%",background:"#090811"}}/><video ref={localRef} autoPlay muted playsInline style={{width:120,maxWidth:"35%",background:"#090811"}}/></div>
+            {callStatus==="incoming"&&<button onClick={()=>void answerCall()}>Aramayı kabul et</button>}
+            <button onClick={()=>void endCall()}>Aramayı bitir</button>
+          </div>}
           <div className="messages">
             <div className="day-line">Sohbet geçmişi</div>
             {filtered.length===0?<div className="empty-state">{connected?"Henüz mesaj yok. İlk mesajı sen gönder!":"Gerçek zamanlı sohbet için bağlantı ayarı gerekli. Sağdaki oda bilgisine bak."}</div>:filtered.map(m=><div key={m.id} className={"message "+(m.mine?"mine":"")}><span className="mini-avatar">{m.sender.slice(0,1).toLocaleUpperCase("tr")}</span><div className="message-content"><div className="message-meta"><b>{m.mine?"Sen":m.sender}</b><time>{m.time}</time></div><div className="bubble">{m.text}{m.fileName&&<div>📎 {m.fileName}</div>}{m.image&&<img src={m.image} alt={m.fileName||"Paylaşılan görsel"}/>}</div></div></div>)}
