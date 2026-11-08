@@ -48,6 +48,12 @@ function ChatRoom({ initialName }: { initialName: string }) {
   const [fileData, setFileData] = useState<{name:string; image?:string} | null>(null);
   const [ready, setReady] = useState(false);
   const [loadedRoom, setLoadedRoom] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [users, setUsers] = useState<{user_id:string;username:string}[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [selectedUser, setSelectedUser] = useState<{user_id:string;username:string}|null>(null);
+  const [directMessages, setDirectMessages] = useState<ChatMessage[]>([]);
+
   const channelRef = useRef<any>(null);
   const [callStatus,setCallStatus] = useState<"idle"|"calling"|"incoming"|"active">("idle");
   const [callKind,setCallKind] = useState(false);
@@ -99,6 +105,46 @@ function ChatRoom({ initialName }: { initialName: string }) {
     setMessages(Array.isArray(all[room]) ? all[room] : []);
     setLoadedRoom(room);
   }, [room, ready]);
+
+
+  useEffect(() => {
+    if (!ready) return;
+    const db = getRealtimeClient();
+    if (!db) return;
+    let alive = true;
+    const load = async () => {
+      const {data:{user}} = await db.auth.getUser();
+      if (!alive || !user) return;
+      setCurrentUserId(user.id);
+      const {data,error} = await db.from("profiles").select("user_id,username").neq("user_id",user.id).order("username").limit(100);
+      if (!alive) return;
+      if (error) { notify("Kullanıcılar yüklenemedi: "+error.message); return; }
+      setUsers(data || []);
+    };
+    void load();
+    return () => { alive = false; };
+  }, [ready, notify]);
+
+  useEffect(() => {
+    if (!ready || !selectedUser || !currentUserId) { setDirectMessages([]); return; }
+    const db = getRealtimeClient();
+    if (!db) return;
+    let alive = true;
+    const pair = (query:any) => query.or("and(sender_id.eq."+currentUserId+",recipient_id.eq."+selectedUser.user_id+"),and(sender_id.eq."+selectedUser.user_id+",recipient_id.eq."+currentUserId+")");
+    const load = async () => {
+      const {data,error} = await pair(db.from("direct_messages").select("id,sender_id,recipient_id,body,created_at")).order("created_at",{ascending:true}).limit(250);
+      if (!alive) return;
+      if (error) { notify("Özel mesajlar yüklenemedi: "+error.message); return; }
+      setDirectMessages((data||[]).map((row:any)=>({id:row.id,sender:row.sender_id===currentUserId?"Sen":selectedUser.username,text:row.body,time:new Date(row.created_at).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}),mine:row.sender_id===currentUserId})));
+    };
+    void load();
+    const channel=db.channel("ayzek-dm-"+[currentUserId,selectedUser.user_id].sort().join("-"));
+    channel.on("postgres_changes",{event:"INSERT",schema:"public",table:"direct_messages"},({new:row}:any)=>{
+      if(!alive || !row?.id || ![currentUserId,selectedUser.user_id].includes(row.sender_id) || ![currentUserId,selectedUser.user_id].includes(row.recipient_id)) return;
+      setDirectMessages(prev=>prev.some(m=>m.id===row.id)?prev:[...prev,{id:row.id,sender:row.sender_id===currentUserId?"Sen":selectedUser.username,text:row.body,time:new Date(row.created_at).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}),mine:row.sender_id===currentUserId}]);
+    }).subscribe();
+    return ()=>{alive=false;void db.removeChannel(channel);};
+  },[ready,selectedUser,currentUserId,notify]);
 
   useEffect(() => {
     if (!ready) return;
@@ -204,7 +250,15 @@ function ChatRoom({ initialName }: { initialName: string }) {
     const text = draft.trim();
     if (!text && !fileData) return;
     const supabase = getRealtimeClient();
-    if (!supabase || !connected) { notify("Canlı sohbet bağlantısı yok. Biraz sonra tekrar dene."); return; }
+    if (!supabase) { notify("Mesaj servisine bağlanılamadı."); return; }
+    if (selectedUser) {
+      if (!currentUserId) { notify("Kullanıcı oturumu bulunamadı."); return; }
+      const {error} = await supabase.from("direct_messages").insert({sender_id:currentUserId,recipient_id:selectedUser.user_id,body:text});
+      if (error) { notify("Özel mesaj gönderilemedi: "+error.message); return; }
+      setDraft("");
+      return;
+    }
+    if (!connected) { notify("Canlı sohbet bağlantısı yok. Biraz sonra tekrar dene."); return; }
     const id = makeId();
     const optimistic: ChatMessage = {
       id, sender: name, text, time: clock(), mine: true,
@@ -273,7 +327,9 @@ function ChatRoom({ initialName }: { initialName: string }) {
     notify("Dinliyorum… Konuşabilirsin.");
   };
 
-  const filtered = messages.filter(m => !search || (m.text + " " + m.sender).toLocaleLowerCase("tr").includes(search.toLocaleLowerCase("tr")));
+  const activeMessages = selectedUser ? directMessages : messages;
+  const filtered = activeMessages.filter(m => !search || (m.text + " " + m.sender).toLocaleLowerCase("tr").includes(search.toLocaleLowerCase("tr")));
+  const visibleUsers = users.filter(u => u.username.toLowerCase().includes(userSearch.toLowerCase()));
 
   return (
     <main className={"messenger-page " + (dark ? "is-dark" : "is-light")}>
@@ -326,12 +382,18 @@ function ChatRoom({ initialName }: { initialName: string }) {
           <div className="list-head"><h1>Mesajlar <span>· {room}</span></h1><button className="icon-btn" onClick={joinRoom} title="Oda oluştur veya katıl"><PencilLine size={17}/></button></div>
           <label className="searchbox"><Search size={15}/><input placeholder="Mesajlarda ara" value={search} onChange={e=>setSearch(e.target.value)}/></label>
           <div className="room-card"><b>🌍 Herkese açık sohbet</b>Davet gerekmez. Hesabıyla giriş yapan herkes otomatik olarak <strong>genel</strong> odasına katılır.</div>
-          <div className="chat-list"><button className="chat-item active" onClick={()=>setSearch("")}><span className="chat-avatar">#</span><span className="chat-copy"><b>{room}</b><small>{onlineCount} kişi çevrimiçi</small></span></button></div>
+          <div style={{padding:"2px 14px 8px",fontSize:11,color:"#c9b6e8",fontWeight:700}}>KULLANICILAR · {users.length}</div>
+          <label className="searchbox"><Search size={15}/><input placeholder="Kullanıcı ara..." value={userSearch} onChange={e=>setUserSearch(e.target.value)}/></label>
+          <div className="chat-list">
+            <button className={"chat-item "+(!selectedUser?"active":"")} onClick={()=>setSelectedUser(null)}><span className="chat-avatar">#</span><span className="chat-copy"><b>Genel sohbet</b><small>{onlineCount} kişi çevrimiçi</small></span></button>
+            {visibleUsers.map(u=><button key={u.user_id} className={"chat-item "+(selectedUser?.user_id===u.user_id?"active":"")} onClick={()=>{setSelectedUser(u);setSearch("");setDetails(false);}}><span className="chat-avatar">{u.username.slice(0,1).toUpperCase()}</span><span className="chat-copy"><b>@{u.username}</b><small>Özel mesaj gönder</small></span></button>)}
+            {visibleUsers.length===0&&<div style={{padding:12,color:"#aaa",fontSize:11}}>Kullanıcı bulunamadı.</div>}
+          </div>
           <div className="list-bottom"><span className={"status-dot "+(connected?"on":"")}/>{connected?"Canlı bağlantı kuruldu":"Bağlantı bekleniyor"} <WifiOff size={13} style={{marginLeft:"auto"}}/></div>
         </aside>
         <section className="conversation">
           <header className="topbar">
-            <div className="current-person"><span className="chat-avatar">#</span><div><h2>{room}</h2><p>{connected?onlineCount+" kişi çevrimiçi":"Canlı bağlantı yok"}</p></div></div>
+            <div className="current-person"><span className="chat-avatar">#</span><div><h2>{selectedUser?"@"+selectedUser.username:room}</h2><p>{selectedUser?"Özel sohbet":connected?onlineCount+" kişi çevrimiçi":"Canlı bağlantı yok"}</p></div></div>
             <div className="top-actions">
               <button title="Sesli arama" onClick={()=>window.dispatchEvent(new CustomEvent("ayzek-call",{detail:{video:false}}))}><Phone size={17}/></button>
               <button title="Görüntülü arama" onClick={()=>window.dispatchEvent(new CustomEvent("ayzek-call",{detail:{video:true}}))}><Video size={17}/></button>
@@ -350,7 +412,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
             <button onClick={()=>void endCall()}>Aramayı bitir</button>
           </div>}
           <div className="messages">
-            <div className="day-line">Sohbet geçmişi</div>
+            <div className="day-line">{selectedUser?"Özel sohbet":"Genel sohbet geçmişi"}</div>
             {filtered.length===0?<div className="empty-state">{connected?"Henüz mesaj yok. İlk mesajı sen gönder!":"Gerçek zamanlı sohbet için bağlantı ayarı gerekli. Sağdaki oda bilgisine bak."}</div>:filtered.map(m=><div key={m.id} className={"message "+(m.mine?"mine":"")}><span className="mini-avatar">{m.sender.slice(0,1).toLocaleUpperCase("tr")}</span><div className="message-content"><div className="message-meta"><b>{m.mine?"Sen":m.sender}</b><time>{m.time}</time></div><div className="bubble">{m.text}{m.fileName&&<div>📎 {m.fileName}</div>}{m.image&&<img src={m.image} alt={m.fileName||"Paylaşılan görsel"}/>}</div></div></div>)}
             <div ref={bottomRef}/>
           </div>
@@ -359,7 +421,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
             <form className="composer" onSubmit={e=>{e.preventDefault();void send();}}>
               <button type="button" title="Dosya ekle" onClick={()=>fileRef.current?.click()}><Paperclip size={18}/></button>
               <input ref={fileRef} className="file-input" type="file" accept="image/*,.txt,.pdf" onChange={e=>pickFile(e.target.files?.[0])}/>
-              <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Mesajını yaz..." aria-label="Mesaj yaz"/>
+              <input value={draft} onChange={e=>setDraft(e.target.value)} placeholder={selectedUser?"@"+selectedUser.username+" kişisine özel mesaj yaz...":"Mesajını yaz..."} aria-label="Mesaj yaz"/>
               <button type="button" title="Emoji ekle" onClick={()=>setDraft(v=>v+" 😊")}><Smile size={18}/></button>
               <button type="button" title="Sesle yaz" onClick={startVoiceInput}><Mic size={18}/></button>
               <button className="send-btn" type="submit" disabled={!draft.trim()&&!fileData} aria-label="Gönder"><Send size={17}/></button>
