@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ShieldCheck, ShieldAlert, ScanLine, FileUp, File, AlertTriangle,
   CheckCircle2, LockKeyhole, Trash2, RefreshCw, Download, Info,
-  FolderShield, Activity, X, ArrowLeft
+   Activity, X, ArrowLeft
 } from "lucide-react";
 
 type Result = {
@@ -128,7 +128,7 @@ export default function VirusCleanerPage() {
 
     <nav className="vcTabs">
       <button className={activeTab === "scan" ? "active" : ""} onClick={() => setActiveTab("scan")}><ScanLine size={15}/> Tarama</button>
-      <button className={activeTab === "quarantine" ? "active" : ""} onClick={() => setActiveTab("quarantine")}><FolderShield size={15}/> Karantina <b>{quarantine.length}</b></button>
+      <button className={activeTab === "quarantine" ? "active" : ""} onClick={() => setActiveTab("quarantine")}><ShieldCheck size={15}/> Karantina <b>{quarantine.length}</b></button>
       <button className={activeTab === "history" ? "active" : ""} onClick={() => setActiveTab("history")}><Activity size={15}/> Geçmiş</button>
     </nav>
 
@@ -159,7 +159,7 @@ export default function VirusCleanerPage() {
               <div className="vcResultBody"><b>{r.name}</b><small>{formatSize(r.size)} · SHA-256: {r.hash.slice(0, 18)}…</small>
                 <span className={"vcStatus " + r.status}>{r.status === "suspicious" ? "Şüpheli göstergeler" : r.status === "review" ? "Manuel inceleme önerilir" : "Bilinen kural eşleşmesi yok"}</span>
                 {r.reasons.map(reason => <p key={reason}>• {reason}</p>)}
-                {r.status !== "no-match" && <button className="vcQuarantine" onClick={() => quarantineFile(r)}><FolderShield size={14}/> Karantina listesine ekle</button>}
+                {r.status !== "no-match" && <button className="vcQuarantine" onClick={() => quarantineFile(r)}><ShieldCheck size={14}/> Karantina listesine ekle</button>}
               </div>
             </article>)}</div>
             <button className="vcReport" onClick={downloadReport}><Download size={15}/> Tarama raporunu indir</button>
@@ -168,10 +168,10 @@ export default function VirusCleanerPage() {
     </section>}
 
     {activeTab === "quarantine" && <section className="vcPanel vcWide">
-      <div className="vcPanelTitle"><div className="vcIcon"><FolderShield size={19}/></div><div><b>Karantina listesi</b><small>Bu uygulamada işaretlediğin dosyalar</small></div></div>
+      <div className="vcPanelTitle"><div className="vcIcon"><ShieldCheck size={19}/></div><div><b>Karantina listesi</b><small>Bu uygulamada işaretlediğin dosyalar</small></div></div>
       <div className="vcNotice"><Info size={16}/> Karantina burada yalnızca uygulama içi listedir. Orijinal dosyayı cihazından taşımaz, kilitlemez veya silmez.</div>
-      {!quarantine.length ? <div className="vcEmpty"><div className="vcRadar"><FolderShield size={28}/></div><b>Karantinada dosya yok</b><p>Tarama sonuçlarından şüpheli bir dosyayı bu listeye ekleyebilirsin.</p></div> :
-        quarantine.map(q => <div className="vcFile" key={q.id}><FolderShield size={17}/><div><b>{q.name}</b><small>Listeye eklendi: {q.date}</small></div><button onClick={() => setQuarantine(prev => prev.filter(x => x.id !== q.id))} aria-label="Listeden kaldır"><Trash2 size={15}/></button></div>)}
+      {!quarantine.length ? <div className="vcEmpty"><div className="vcRadar"><ShieldCheck size={28}/></div><b>Karantinada dosya yok</b><p>Tarama sonuçlarından şüpheli bir dosyayı bu listeye ekleyebilirsin.</p></div> :
+        quarantine.map(q => <div className="vcFile" key={q.id}><ShieldCheck size={17}/><div><b>{q.name}</b><small>Listeye eklendi: {q.date}</small></div><button onClick={() => setQuarantine(prev => prev.filter(x => x.id !== q.id))} aria-label="Listeden kaldır"><Trash2 size={15}/></button></div>)}
     </section>}
 
     {activeTab === "history" && <section className="vcPanel vcWide">
