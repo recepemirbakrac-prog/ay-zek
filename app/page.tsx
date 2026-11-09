@@ -3,14 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, BrainCircuit, Code2, FileText, ImagePlus, MessageCircle,
-  Music2, Search, Sparkles, WandSparkles, Gamepad2, ShieldCheck
+  ArrowRight, BrainCircuit, FileText, ImagePlus, MessageCircle,
+  Music2, Search, Sparkles, Gamepad2, ShieldCheck
 } from "lucide-react";
 import "./home.css";
 
 const tools = [
   { title: "Akıllı sohbet", desc: "Sorular sor, fikir al, konuları öğren.", icon: MessageCircle, href: "/chat", tag: "En popüler", tone: "violet" },
-  { title: "Uygulama oluşturucu", desc: "Yazdığın fikirden çalışan web uygulaması üret.", icon: Code2, href: "/builder", tag: "AI Studio", tone: "blue" },
   { title: "Yazı ve belge", desc: "Metin, özet, e-posta ve sunum hazırla.", icon: FileText, href: "/chat?prompt=Benim%20i%C3%A7in%20profesyonel%20bir%20belge%20haz%C4%B1rla.", tag: "Üretkenlik", tone: "orange" },
   { title: "Kodlama yardımcısı", desc: "Kod yaz, açıkla ve hataları çöz.", icon: BrainCircuit, href: "/chat?prompt=Bir%20yaz%C4%B1l%C4%B1m%20uzman%C4%B1%20gibi%20bana%20yard%C4%B1m%20et.", tag: "Geliştirici", tone: "green" },
   { title: "Yaratıcı fikirler", desc: "Şarkı, hikâye, slogan ve içerik üret.", icon: Music2, href: "/chat?prompt=Bana%20yarat%C4%B1c%C4%B1%20bir%20fikir%20%C3%BCret.", tag: "Yaratıcılık", tone: "pink" },
@@ -28,7 +27,7 @@ export default function Home() {
     <main className="homeShell">
       <header className="homeNav">
         <Link href="/" className="brandMark"><span className="brandIcon"><Sparkles size={21}/></span><span>Ay Zek<span className="brandAI"> AI</span></span></Link>
-        <nav><Link href="/chat">Sohbet</Link><Link href="/builder">Uygulama oluştur</Link><a href="#araclar">Araçlar</a></nav>
+        <nav><Link href="/chat">Sohbet</Link><a href="#araclar">Araçlar</a></nav>
         <Link className="navCta" href="/chat">Başla <ArrowRight size={16}/></Link>
       </header>
 
@@ -51,12 +50,6 @@ export default function Home() {
         <div className="toolGrid">
           {tools.map((tool) => { const Icon = tool.icon; return <Link href={tool.href} className="toolCard" key={tool.title}><div className={"toolIcon "+tool.tone}><Icon size={22}/></div><span className="toolTag">{tool.tag}</span><h3>{tool.title}</h3><p>{tool.desc}</p><span className="toolArrow"><ArrowRight size={17}/></span></Link>; })}
         </div>
-      </section>
-
-      <section className="builderBanner">
-        <div className="builderOrb"><WandSparkles size={31}/></div>
-        <div><span className="sectionEyebrow">AY ZEK STUDIO</span><h2>Bir fikrin mi var? Uygulamaya dönüştürelim.</h2><p>Ne istediğini anlat, yapay zekâ senin için bir web uygulaması hazırlasın.</p></div>
-        <Link href="/builder">Hemen oluştur <ArrowRight size={17}/></Link>
       </section>
 
       <section className="moreSection">
