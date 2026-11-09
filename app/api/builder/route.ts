@@ -27,11 +27,10 @@ export async function POST(request: Request) {
       model,
       system: systemPrompt,
       prompt,
-      temperature: 0.25,
-      maxTokens: 8192
+      temperature: 0.25
     });
 
-    let html = result.text.trim().replace(/^\`\`\`(?:html)?\s*/i, "").replace(/\s*\`\`\`$/, "");
+    let html = result.text.trim().replace(/^\x60{3}(?:html)?\s*/i, "").replace(/\s*\x60{3}$/, "");
     if (!html) return NextResponse.json({ error: "Yapay zekâ boş yanıt döndürdü. Tekrar dene." }, { status: 502 });
     if (!/^<!doctype html|^<html[\s>]/i.test(html)) return NextResponse.json({ error: "Oluşturulan çıktı HTML belgesi değil. İsteğini biraz daha açık yazarak tekrar dene." }, { status: 502 });
     if (html.length > 40000) html = html.slice(0, 40000);
