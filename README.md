@@ -1,6 +1,13 @@
-# Ay Zek
+# Ay Zek AI
 
-Türkçe yapay zekâ sohbet uygulaması. Next.js, Vercel AI SDK ve Google Gemini kullanır.
+Ay Zek; sohbet, öğrenme, yazı ve kod yardımı ile fikirlerden web uygulaması üretme özelliklerini tek bir arayüzde birleştiren Türkçe yapay zekâ çalışma alanıdır.
+
+## Teknoloji
+
+- Next.js ve React
+- Vercel AI SDK + Vercel AI Gateway
+- Supabase Realtime (cihazlar arası sohbet odaları)
+- Vercel (yayınlama) ve GitHub (kaynak kodu)
 
 ## Geliştirme
 
@@ -9,31 +16,25 @@ npm install
 npm run dev
 ```
 
-## Ücretsiz Gemini kurulumu
+## AI Gateway
 
-1. Google AI Studio üzerinden ücretsiz bir API anahtarı oluştur: https://aistudio.google.com/apikey
-2. Vercel projesinde `GEMINI_API_KEY` adlı environment variable ekle.
-3. Production, Preview ve Development ortamlarını seçip yeniden deploy et.
+Sohbet ve uygulama oluşturucu, `AI_GATEWAY_MODEL` ortam değişkenindeki modeli kullanır. Değişken tanımlı değilse `deepseek/deepseek-v4.1-flash` varsayılanı kullanılır.
 
-Kart veya ücretli AI Gateway gerekmez. Ücretsiz Gemini kullanım limitleri Google tarafından belirlenir.
+Vercel üzerinde AI Gateway kimlik doğrulaması Vercel OIDC ile yapılır. Projeyi Vercel'e bağlayıp yerel geliştirme için Vercel ortam değişkenlerini çekin. AI Gateway kullanımı seçilen modelin fiyatlandırmasına ve hesabın bakiyesine/bütçesine bağlı olabilir; ücretsiz ve sınırsız kullanım garantisi yoktur.
 
-## Uygulama
+## Uygulamalar
 
-- `/` ana sayfası sohbet ekranına yönlendirir.
-- `/chat` Ay Zek sohbet uygulamasıdır.
+- `/` Ay Zek AI ana sayfası ve araç merkezi
+- `/chat` genel amaçlı yapay zekâ sohbeti
+- `/builder` metinden web uygulaması oluşturucu
+- `/internetsiz-sohbet` Supabase Realtime ile oda tabanlı sohbet
+- `/satranc`, `/sehir`, `/otogar-tycoon` ve diğer oyun/araç sayfaları
 
+## Supabase Realtime sohbet kurulumu
 
-## Gerçek zamanlı sohbet kurulumu
+`/internetsiz-sohbet` sayfası Supabase Realtime Broadcast ve Presence kullanır. Vercel projesinde şu değişkenler bulunmalıdır:
 
-`/internetsiz-sohbet` sayfası Supabase Realtime Broadcast ve Presence kullanır. Farklı cihazlardaki kişilerin aynı odada mesajlaşabilmesi için:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-1. Supabase'de ücretsiz bir proje oluşturun: https://supabase.com/dashboard
-2. Project Settings → API bölümünden Project URL ve publishable/anon public key değerlerini alın.
-3. Vercel → ay-zek → Settings → Environment Variables bölümüne şu iki değişkeni ekleyin:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. İkisini Production, Preview ve Development ortamlarına ekleyip yeniden deploy edin.
-5. Supabase Realtime ayarlarında public Broadcast ve Presence kanallarına izin verin. Bu örnek odalar herkese açık oda kodları kullanır; özel/gizli sohbet için kimlik doğrulama ve kanal politikaları eklenmelidir.
-6. Arkadaşlarınızla aynı oda kodunu paylaşın. İki taraf da çevrimiçi ve aynı odadayken mesajlar gerçek zamanlı iletilir.
-
-Mesaj geçmişi cihazda saklanır; Realtime Broadcast mesajları sunucuda kalıcı bir veritabanına yazmaz. Sesli/görüntülü arama ve büyük dosya yükleme bu sürümde etkin değildir.
+Bu örnek oda kodları herkese açık olabilir; özel sohbet için kimlik doğrulama ve kanal politikaları eklenmelidir. Mesaj geçmişi cihazda saklanır; Broadcast mesajları sunucuda kalıcı veritabanına yazılmaz. Sesli/görüntülü arama ve büyük dosya yükleme bu sürümde etkin değildir.
