@@ -12,8 +12,11 @@ const systemPrompt = [
 
 function readableAiError(error: unknown) {
   const detail = error instanceof Error ? error.message : String(error);
+  if (/customer_verification_required|valid credit card on file/i.test(detail)) {
+    return "Vercel AI Gateway, ücretsiz kullanım kredilerini açmak için hesapta geçerli bir ödeme kartı doğrulaması istiyor. Kart eklemeden bu sağlayıcı üzerinden yapay zekâ yanıtı verilemiyor. Vercel AI Gateway ayarlarını aç: https://vercel.com/d?to=%2F%5Bteam%5D%2F~%2Fai%3Fmodal%3Dadd-credit-card";
+  }
   if (/429|rate.?limit|too many requests/i.test(detail)) return "Yapay zekâ kullanım sınırına ulaşıldı. Biraz bekleyip tekrar dene.";
-  if (/credit|budget|payment|billing/i.test(detail)) return "AI Gateway kullanım bakiyesi veya bütçesi yetersiz. Vercel AI Gateway ayarlarını kontrol et.";
+  if (/credit|budget|payment|billing/i.test(detail)) return "AI Gateway kullanım bakiyesi veya bütçesi yetersiz. Vercel AI Gateway kullanım ve bütçe ayarlarını kontrol et.";
   if (/api.?key|unauthenticated|permission|401|403/i.test(detail)) return "AI Gateway kimlik doğrulaması başarısız. Vercel projesinin AI Gateway bağlantısını kontrol et.";
   return "Yanıt oluşturulurken bir hata oluştu. Lütfen tekrar dene.";
 }
