@@ -1,9 +1,16 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
-import { createGroq } from "@ai-sdk/groq";
+import { createOpenAI } from "@ai-sdk/openai";
 
 export const maxDuration = 60;
 
-const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
+const openrouter = createOpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  headers: {
+    "HTTP-Referer": "https://ay-zek.vercel.app",
+    "X-Title": "Ay Zek AI"
+  }
+});
 
 const systemPrompt = [
   "Sen Ay Zek AI adında Türkçe konuşan, çok yönlü, yardımsever ve güvenilir bir yapay zekâ asistansın.",
@@ -16,22 +23,22 @@ const systemPrompt = [
 function readableAiError(error: unknown) {
   const detail = error instanceof Error ? error.message : String(error);
   if (/api.?key|unauthenticated|401|403/i.test(detail)) {
-    return "Groq API anahtarı eksik veya geçersiz. Vercel projesinde GROQ_API_KEY ayarını kontrol et.";
+    return "OpenRouter API anahtarı geçersiz. Vercel'deki OPENROUTER_API_KEY ayarını kontrol et.";
   }
   if (/429|rate.?limit|too many requests/i.test(detail)) {
-    return "Groq ücretsiz kullanım sınırına ulaşıldı. Biraz bekleyip tekrar dene.";
+    return "OpenRouter ücretsiz model sınırına ulaşıldı. Biraz bekleyip tekrar dene.";
   }
-  if (/model.*(not found|decommissioned)|model_not_found/i.test(detail)) {
-    return "Seçilen Groq modeli şu anda kullanılamıyor. GROQ_MODEL ayarını kontrol et.";
+  if (/no endpoints|model.*(not found|unavailable)|model_not_found/i.test(detail)) {
+    return "Şu anda uygun ücretsiz model bulunamadı. Biraz sonra tekrar dene.";
   }
   return "Yanıt oluşturulurken bir hata oluştu. Lütfen tekrar dene.";
 }
 
 export async function POST(req: Request) {
   try {
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.OPENROUTER_API_KEY) {
       return Response.json(
-        { error: "Ücretsiz Groq bağlantısı henüz etkinleştirilmedi. Groq API anahtarını Vercel'e eklemek gerekiyor." },
+        { error: "OpenRouter anahtarı henüz ayarlanmamış. Vercel'de OPENROUTER_API_KEY değişkenini kontrol et." },
         { status: 503 }
       );
     }
@@ -42,19 +49,19 @@ export async function POST(req: Request) {
       return Response.json({ error: "Mesaj geçmişi eksik veya hatalı." }, { status: 400 });
     }
 
-    const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+    // OpenRouter automatically selects an available free model for this request.
     const result = streamText({
-      model: groq(model),
+      model: openrouter("openrouter/free"),
       system: systemPrompt,
       messages: await convertToModelMessages(messages),
       onError({ error }) {
-        console.error("Ay Zek Groq stream error:", error);
+        console.error("Ay Zek OpenRouter stream error:", error);
       }
     });
 
     return result.toUIMessageStreamResponse({
       onError(error) {
-        console.error("Ay Zek Groq response stream error:", error);
+        console.error("Ay Zek OpenRouter response stream error:", error);
         return readableAiError(error);
       }
     });
