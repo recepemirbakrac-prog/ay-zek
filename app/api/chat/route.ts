@@ -1,6 +1,9 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
+import { createGroq } from "@ai-sdk/groq";
 
 export const maxDuration = 60;
+
+const groq = createGroq({ apiKey: process.env.GROQ_API_KEY });
 
 const systemPrompt = [
   "Sen Ay Zek AI adında Türkçe konuşan, çok yönlü, yardımsever ve güvenilir bir yapay zekâ asistansın.",
@@ -12,32 +15,46 @@ const systemPrompt = [
 
 function readableAiError(error: unknown) {
   const detail = error instanceof Error ? error.message : String(error);
-  if (/customer_verification_required|valid credit card on file/i.test(detail)) {
-    return "Vercel AI Gateway, ücretsiz kullanım kredilerini açmak için hesapta geçerli bir ödeme kartı doğrulaması istiyor. Kart eklemeden bu sağlayıcı üzerinden yapay zekâ yanıtı verilemiyor. Vercel AI Gateway ayarlarını aç: https://vercel.com/d?to=%2F%5Bteam%5D%2F~%2Fai%3Fmodal%3Dadd-credit-card";
+  if (/api.?key|unauthenticated|401|403/i.test(detail)) {
+    return "Groq API anahtarı eksik veya geçersiz. Vercel projesinde GROQ_API_KEY ayarını kontrol et.";
   }
-  if (/429|rate.?limit|too many requests/i.test(detail)) return "Yapay zekâ kullanım sınırına ulaşıldı. Biraz bekleyip tekrar dene.";
-  if (/credit|budget|payment|billing/i.test(detail)) return "AI Gateway kullanım bakiyesi veya bütçesi yetersiz. Vercel AI Gateway kullanım ve bütçe ayarlarını kontrol et.";
-  if (/api.?key|unauthenticated|permission|401|403/i.test(detail)) return "AI Gateway kimlik doğrulaması başarısız. Vercel projesinin AI Gateway bağlantısını kontrol et.";
+  if (/429|rate.?limit|too many requests/i.test(detail)) {
+    return "Groq ücretsiz kullanım sınırına ulaşıldı. Biraz bekleyip tekrar dene.";
+  }
+  if (/model.*(not found|decommissioned)|model_not_found/i.test(detail)) {
+    return "Seçilen Groq modeli şu anda kullanılamıyor. GROQ_MODEL ayarını kontrol et.";
+  }
   return "Yanıt oluşturulurken bir hata oluştu. Lütfen tekrar dene.";
 }
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.GROQ_API_KEY) {
+      return Response.json(
+        { error: "Ücretsiz Groq bağlantısı henüz etkinleştirilmedi. Groq API anahtarını Vercel'e eklemek gerekiyor." },
+        { status: 503 }
+      );
+    }
+
     const body = await req.json();
     const messages = body?.messages as UIMessage[] | undefined;
-    if (!Array.isArray(messages)) return Response.json({ error: "Mesaj geçmişi eksik veya hatalı." }, { status: 400 });
+    if (!Array.isArray(messages)) {
+      return Response.json({ error: "Mesaj geçmişi eksik veya hatalı." }, { status: 400 });
+    }
 
-    const model = process.env.AI_GATEWAY_MODEL || "deepseek/deepseek-v4.1-flash";
+    const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
     const result = streamText({
-      model,
+      model: groq(model),
       system: systemPrompt,
       messages: await convertToModelMessages(messages),
-      onError({ error }) { console.error("Ay Zek AI Gateway stream error:", error); }
+      onError({ error }) {
+        console.error("Ay Zek Groq stream error:", error);
+      }
     });
 
     return result.toUIMessageStreamResponse({
       onError(error) {
-        console.error("Ay Zek AI Gateway response stream error:", error);
+        console.error("Ay Zek Groq response stream error:", error);
         return readableAiError(error);
       }
     });
