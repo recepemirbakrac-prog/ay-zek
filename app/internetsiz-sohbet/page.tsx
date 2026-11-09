@@ -52,6 +52,8 @@ function ChatRoom({ initialName }: { initialName: string }) {
   const [users, setUsers] = useState<{user_id:string;username:string}[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<{user_id:string;username:string}|null>(null);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chats"|"calls"|"contacts"|"settings">("chats");
   const [directMessages, setDirectMessages] = useState<ChatMessage[]>([]);
 
   const channelRef = useRef<any>(null);
@@ -401,6 +403,10 @@ function ChatRoom({ initialName }: { initialName: string }) {
         .toast{border:1px solid #c4a4ff55;box-shadow:0 12px 35px #0008}
         @media(max-width:900px){.messenger{grid-template-columns:54px 225px minmax(0,1fr)}.right-panel{display:none}}
         @media(max-width:680px){.messenger-page{padding:0}.messenger{height:100dvh;min-height:0;border-radius:0;grid-template-columns:minmax(0,1fr)}.rail{display:none}.list-panel{display:flex;position:absolute;z-index:8;left:0;top:0;bottom:0;width:min(310px,84vw);transform:translateX(-102%);transition:transform .22s ease;box-shadow:15px 0 45px #0008}.list-panel.mobile-visible{transform:translateX(0)}.conversation{grid-column:1}.topbar{padding:0 12px}.messages{padding:14px 12px}.composer-wrap{padding:0 10px 12px}.top-actions{gap:4px}.top-actions button{width:34px;height:34px}}
+
+        .messenger-page{background:#f0f1f8;color:#fff}.messenger{background:#071226;border:0;border-radius:34px;box-shadow:0 28px 80px #080d1f30;grid-template-columns:250px minmax(0,1fr) 230px}.rail{background:#071226}.list-panel{background:#071226;border-color:#ffffff12}.conversation{background:#08152b}.right-panel{background:#071226}.list-head{padding:24px 18px 12px}.list-head h1{font-size:18px;font-weight:800}.list-head small{display:block;margin-top:5px}.searchbox{background:#111f38;border:1px solid #ffffff10;border-radius:22px;padding:12px 14px}.room-card{border-radius:18px;background:linear-gradient(120deg,#6945f3,#8c43ee);color:white;border:0;padding:13px}.chat-item{border-radius:16px;padding:12px}.chat-item.active,.chat-item:hover{background:#6945f3}.chat-avatar,.mini-avatar{border:2px solid #8e6bff;background:linear-gradient(135deg,#f0a1d3,#7657db);color:white}.topbar{background:#08152b;border-bottom:1px solid #ffffff10}.bubble{border-radius:18px 18px 18px 5px;background:#172641}.message.mine .bubble{background:linear-gradient(120deg,#6647f3,#8b4bea);border-radius:18px 18px 5px 18px}.composer{border-radius:24px;background:#14223b;border:1px solid #ffffff12}.composer .send-btn{background:linear-gradient(120deg,#7650ff,#a44cf1);border-radius:50%}.story-strip{padding:8px 14px 14px}.story-title{font-size:11px;font-weight:800;color:#d9d4e8;margin-bottom:10px}.story-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:3px}.story{display:grid;gap:5px;justify-items:center;min-width:48px;background:none;border:0;color:#d7d2e3;font-size:10px;cursor:pointer}.story-avatar{width:43px;height:43px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#f4a0c7,#5c66d9);border:2px solid #a98aff;font-size:17px;font-weight:800}.add-story{background:#1d2c49;color:#a88aff;font-size:25px}.mobile-menu-btn{display:none;background:#172641;color:white;border:0;border-radius:50%;width:38px;height:38px;place-items:center}.bottom-tabs{display:none}
+        @media(max-width:900px){.messenger{grid-template-columns:225px minmax(0,1fr)}.right-panel{display:none}}
+        @media(max-width:680px){.messenger-page{padding:0;background:#071226}.messenger{height:100dvh;min-height:0;border-radius:0;grid-template-columns:minmax(0,1fr);width:100%}.rail{display:none}.list-panel{display:flex;position:absolute;z-index:20;left:0;top:0;bottom:0;width:min(320px,86vw);transform:translateX(-105%);transition:transform .22s ease;box-shadow:15px 0 45px #0009}.list-panel.mobile-visible{transform:translateX(0)}.conversation{grid-column:1;min-height:0}.topbar{padding:10px 12px;gap:8px}.mobile-menu-btn{display:grid;flex:none}.current-person{min-width:0;flex:1}.top-actions button{width:32px;height:32px}.messages{padding:14px 12px 90px}.composer-wrap{padding:0 10px 75px}.bottom-tabs{display:flex;position:absolute;z-index:10;bottom:0;left:0;right:0;height:66px;justify-content:space-around;align-items:center;background:#071226;border-top:1px solid #ffffff12;padding-bottom:env(safe-area-inset-bottom)}.bottom-tabs button{border:0;background:none;color:#85839d;display:grid;justify-items:center;gap:3px;min-width:55px}.bottom-tabs button.selected{color:#b79aff}.bottom-tabs small{font-size:9px}.story-strip{padding:5px 14px 10px}.story-avatar{width:39px;height:39px}.list-head{padding-top:20px}}
       `}</style>
       <section className="messenger">
         <nav className="rail">
@@ -413,10 +419,10 @@ function ChatRoom({ initialName }: { initialName: string }) {
           <div className="rail-spacer"/>
           <button className="rail-btn" onClick={()=>setDark(v=>!v)} title="Açık/koyu tema">{dark?<Sun size={17}/>:<Moon size={17}/>}</button>
         </nav>
-        <aside className="list-panel">
-          <div className="list-head"><h1>Mesajlar <span>· {room}</span></h1><button className="icon-btn" onClick={joinRoom} title="Oda oluştur veya katıl"><PencilLine size={17}/></button></div>
+        <aside className={"list-panel "+(mobileListOpen?"mobile-visible":"")}>
+          <div className="list-head"><div><h1>Merhaba, {name}</h1><small style={{color:"#9691aa"}}>Neler oluyor?</small></div><button className="icon-btn" onClick={joinRoom} title="Oda oluştur veya katıl"><PencilLine size={17}/></button></div>
           <label className="searchbox"><Search size={15}/><input placeholder="Mesajlarda ara" value={search} onChange={e=>setSearch(e.target.value)}/></label>
-          <div className="room-card"><b>🌍 Herkese açık sohbet</b>Davet gerekmez. Hesabıyla giriş yapan herkes otomatik olarak <strong>genel</strong> odasına katılır.</div>
+          <div className="room-card"><b>🌍 Herkese açık sohbet</b>Davet gerekmez. Herkes <strong>genel</strong> odasına katılabilir.</div><div className="story-strip"><div className="story-title">Hikâyeler</div><div className="story-row"><button className="story" onClick={changeName}><span className="story-avatar add-story">＋</span><small>Hikâyem</small></button>{users.slice(0,8).map(u=><button className="story" key={u.user_id} onClick={()=>{setSelectedUser(u);setMobileListOpen(false);}}><span className="story-avatar">{u.username.slice(0,1).toUpperCase()}</span><small>{u.username.slice(0,10)}</small></button>)}</div></div>
           <div style={{padding:"2px 14px 8px",fontSize:11,color:"#c9b6e8",fontWeight:700}}>KİŞİLER · {users.length}</div>
           <label className="searchbox"><Search size={15}/><input placeholder="Kullanıcı ara..." value={userSearch} onChange={e=>setUserSearch(e.target.value)}/></label>
           <div className="chat-list">
@@ -428,6 +434,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
         </aside>
         <section className="conversation">
           <header className="topbar">
+            <button className="mobile-menu-btn" onClick={()=>setMobileListOpen(v=>!v)} aria-label="Kişileri aç"><Users size={19}/></button>
             <div className="current-person"><span className="chat-avatar">#</span><div><h2>{selectedUser?"@"+selectedUser.username:room}</h2><p>{selectedUser?"Özel sohbet":connected?onlineCount+" kişi çevrimiçi":"Canlı bağlantı yok"}</p></div></div>
             <div className="top-actions">
               <button title="Sesli arama" onClick={()=>window.dispatchEvent(new CustomEvent("ayzek-call",{detail:{video:false}}))}><Phone size={17}/></button>
@@ -462,6 +469,7 @@ function ChatRoom({ initialName }: { initialName: string }) {
               <button className="send-btn" type="submit" disabled={!draft.trim()&&!fileData} aria-label="Gönder"><Send size={17}/></button>
             </form>
           </div>
+          <nav className="bottom-tabs"><button className={activeTab==="chats"?"selected":""} onClick={()=>{setActiveTab("chats");setMobileListOpen(false);setSelectedUser(null);}}><MessageCircle size={18}/><small>Sohbetler</small></button><button className={activeTab==="calls"?"selected":""} onClick={()=>{setActiveTab("calls");notify("Arama geçmişi henüz bulunmuyor.");}}><Phone size={18}/><small>Aramalar</small></button><button className={activeTab==="contacts"?"selected":""} onClick={()=>{setActiveTab("contacts");setMobileListOpen(true);}}><Users size={18}/><small>Kişiler</small></button><button className={activeTab==="settings"?"selected":""} onClick={()=>{setActiveTab("settings");setMenu(true);}}><Settings size={18}/><small>Ayarlar</small></button></nav>
         </section>
         <aside className={"right-panel "+(details?"mobile-open":"")}>
           <div className="detail-head"><span>Oda bilgisi</span><button className="icon-btn" onClick={()=>setDetails(false)} title="Kapat"><X size={16}/></button></div>
