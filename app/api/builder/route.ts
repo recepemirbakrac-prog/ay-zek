@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { generateText } from "ai";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const systemPrompt = [
-  "You are Ay zek Studio, an expert product designer and frontend engineer.",
+  "You are Ay Zek Studio, an expert product designer and frontend engineer.",
   "Generate a complete, polished, responsive, single-file web application from the user's request.",
   "Return ONLY a complete HTML document. No markdown fences, no explanation.",
   "Put all CSS in a style tag and all JavaScript in a script tag. Use semantic HTML and accessible labels.",
@@ -20,40 +22,25 @@ export async function POST(request: Request) {
     if (!prompt) return NextResponse.json({ error: "Nasıl bir uygulama istediğini yaz." }, { status: 400 });
     if (prompt.length > 6000) return NextResponse.json({ error: "İstek en fazla 6.000 karakter olabilir." }, { status: 413 });
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({
-        error: "Ücretsiz yapay zekâyı etkinleştirmek için Google AI Studio'dan ücretsiz Gemini API anahtarı alıp Vercel'de GEMINI_API_KEY adıyla ekle. Kart veya ödeme bilgisi gerekmez: https://aistudio.google.com/apikey"
-      }, { status: 503 });
-    }
-
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + encodeURIComponent(apiKey), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.25, maxOutputTokens: 8192 }
-      })
+    const model = process.env.AI_GATEWAY_MODEL || "deepseek/deepseek-v4.1-flash";
+    const result = await generateText({
+      model,
+      system: systemPrompt,
+      prompt,
+      temperature: 0.25,
+      maxTokens: 8192
     });
 
-    if (!response.ok) {
-      const detail = await response.text();
-      console.error("Gemini builder error", response.status, detail.slice(0, 500));
-      if (response.status === 429) return NextResponse.json({ error: "Ücretsiz Gemini kullanım sınırına ulaşıldı. Biraz bekleyip tekrar dene." }, { status: 429 });
-      if (response.status === 400 || response.status === 403) return NextResponse.json({ error: "Gemini API anahtarı geçersiz veya bu model için erişim kapalı. Google AI Studio'daki ücretsiz anahtarını kontrol et." }, { status: 502 });
-      return NextResponse.json({ error: "Uygulama oluşturulamadı. Lütfen tekrar dene." }, { status: 502 });
-    }
-
-    const data = await response.json();
-    let html = data.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || "").join("");
-    if (typeof html !== "string" || !html.trim()) return NextResponse.json({ error: "Gemini geçerli bir uygulama yanıtı döndürmedi." }, { status: 502 });
-    html = html.trim().replace(/^```(?:html)?\s*/i, "").replace(/\s*```$/, "");
+    let html = result.text.trim().replace(/^\`\`\`(?:html)?\s*/i, "").replace(/\s*\`\`\`$/, "");
+    if (!html) return NextResponse.json({ error: "Yapay zekâ boş yanıt döndürdü. Tekrar dene." }, { status: 502 });
     if (!/^<!doctype html|^<html[\s>]/i.test(html)) return NextResponse.json({ error: "Oluşturulan çıktı HTML belgesi değil. İsteğini biraz daha açık yazarak tekrar dene." }, { status: 502 });
     if (html.length > 40000) html = html.slice(0, 40000);
     return NextResponse.json({ html });
   } catch (error) {
-    console.error("Builder route error", error);
-    return NextResponse.json({ error: "İstek işlenirken bir hata oluştu." }, { status: 500 });
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error("Ay Zek Studio AI Gateway error:", detail);
+    if (/429|rate.?limit/i.test(detail)) return NextResponse.json({ error: "Yapay zekâ kullanım sınırına ulaşıldı. Biraz bekleyip tekrar dene." }, { status: 429 });
+    if (/credit|budget|payment|billing/i.test(detail)) return NextResponse.json({ error: "AI Gateway kullanım bakiyesi veya bütçesi yetersiz." }, { status: 402 });
+    return NextResponse.json({ error: "Uygulama oluşturulamadı. AI Gateway ayarlarını kontrol edip tekrar dene." }, { status: 502 });
   }
 }
