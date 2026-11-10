@@ -67,7 +67,7 @@ export default function ApiKeysPage() {
   const auth = async (mode: "login" | "signup") => {
     if (!supabase) return;
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(normalizedEmail)) {
       setNotice("Geçerli bir e-posta adresi yaz. Örnek: ad@gmail.com"); return;
     }
     if (password.length < 6) { setNotice("Şifren en az 6 karakter olmalı."); return; }
@@ -99,7 +99,7 @@ export default function ApiKeysPage() {
   const resetPassword = async () => {
     if (!supabase) return;
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(normalizedEmail)) {
       setNotice("Şifre sıfırlamak için geçerli e-posta adresini yaz."); return;
     }
     setBusy(true); setNotice("");
