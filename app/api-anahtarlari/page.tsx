@@ -114,7 +114,7 @@ export default function ApiKeysPage() {
     if (!supabase) return;
     const { error } = await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id);
     if (error) setNotice("Anahtar iptal edilemedi: " + error.message);
-    else { setNotice("API anahtarı iptal edildi."); await loadKeys(); }
+    else { setNotice("API anahtarı iptal edildi."); setKeys(current => current.map(item => item.id === id ? { ...item, revoked_at: new Date().toISOString() } : item)); }
   };
 
   return (
