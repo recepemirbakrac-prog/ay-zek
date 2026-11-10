@@ -45,8 +45,7 @@ export default function ApiKeysPage() {
   useEffect(() => {
     if (!supabase) return;
     void loadKeys();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { void loadKeys(); });
-    return () => subscription.unsubscribe();
+
   }, [loadKeys]);
 
   const auth = async (mode: "login" | "signup") => {
