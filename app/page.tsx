@@ -27,7 +27,7 @@ export default function Home() {
     <main className="homeShell">
       <header className="homeNav">
         <Link href="/" className="brandMark"><span className="brandIcon"><Sparkles size={21}/></span><span>Ay Zek<span className="brandAI"> AI</span></span></Link>
-        <nav><Link href="/chat">Sohbet</Link><a href="#araclar">Araçlar</a></nav>
+        <nav><Link href="/chat">Sohbet</Link><a href="#araclar">Araçlar</a><Link href="/api-anahtarlari">API Anahtarları</Link></nav>
         <Link className="navCta" href="/chat">Başla <ArrowRight size={16}/></Link>
       </header>
 
