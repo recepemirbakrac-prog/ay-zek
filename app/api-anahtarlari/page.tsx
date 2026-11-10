@@ -32,32 +32,62 @@ export default function ApiKeysPage() {
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const loadKeys = useCallback(async () => {
+  useEffect(() => {
     if (!supabase) return;
-    const { data: { user: current } } = await supabase.auth.getUser();
-    setUser(current ? { id: current.id, email: current.email } : null);
-    if (!current) { setKeys([]); return; }
-    const { data, error } = await supabase.from("api_keys").select("id,name,key_prefix,created_at,last_used_at,revoked_at").order("created_at", { ascending: false });
-    if (error) setNotice("Anahtarlar yüklenemedi: " + error.message);
-    else setKeys((data ?? []) as SavedKey[]);
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) setNotice("Oturum kontrol edilemedi. Sayfayı yenileyip tekrar dene.");
+      const current = data.session?.user;
+      setUser(current ? { id: current.id, email: current.email } : null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const current = session?.user;
+      setUser(current ? { id: current.id, email: current.email } : null);
+      if (!current) setKeys([]);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!supabase) return;
-    void loadKeys();
-
-  }, [loadKeys]);
+    if (!supabase || !user) { setKeys([]); return; }
+    let active = true;
+    void supabase.from("api_keys")
+      .select("id,name,key_prefix,created_at,last_used_at,revoked_at")
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setNotice("Anahtarlar yüklenemedi: " + error.message);
+        else setKeys((data ?? []) as SavedKey[]);
+      });
+    return () => { active = false; };
+  }, [user?.id]); 
 
   const auth = async (mode: "login" | "signup") => {
     if (!supabase) return;
     setBusy(true); setNotice("");
     const result = mode === "login"
       ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      : await supabase.auth.signUp({ email: email.trim(), password });
+      : await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: window.location.origin + "/api-anahtarlari" }
+        });
     setBusy(false);
-    if (result.error) setNotice(result.error.message);
-    else if (mode === "signup" && !result.data.session) setNotice("Kayıt oluşturuldu. E-postana gelen doğrulama bağlantısına tıkla, sonra giriş yap.");
-    else { setNotice("Giriş başarılı."); await loadKeys(); }
+    if (result.error) {
+      const message = result.error.message.toLowerCase();
+      if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+        setNotice("Bu e-posta zaten kayıtlı. Yeni hesap açmak yerine Giriş yap düğmesini kullan.");
+      } else if (message.includes("rate") || message.includes("email") && message.includes("send")) {
+        setNotice("Doğrulama e-postası şu an gönderilemedi. Biraz bekleyip tekrar dene.");
+      } else {
+        setNotice("İşlem başarısız: " + result.error.message);
+      }
+    } else if (mode === "signup" && !result.data.session) {
+      setNotice("Hesabın oluşturuldu! E-postana gelen doğrulama bağlantısını aç. Bağlantı seni Ay Zek API sayfasına geri getirecek.");
+    } else {
+      setNotice("Giriş başarılı.");
+      const current = result.data.user;
+      if (current) setUser({ id: current.id, email: current.email });
+    }
   };
 
   const createKey = async () => {
@@ -72,7 +102,7 @@ export default function ApiKeysPage() {
     setBusy(false);
     if (error) { setNotice("Anahtar oluşturulamadı: " + error.message); return; }
     setNewSecret(secret);
-    await loadKeys();
+
   };
 
   const copy = async (value: string) => {
