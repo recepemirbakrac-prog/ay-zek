@@ -63,31 +63,48 @@ export default function ApiKeysPage() {
 
   const auth = async (mode: "login" | "signup") => {
     if (!supabase) return;
-    setBusy(true); setNotice("");
-    const result = mode === "login"
-      ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      : await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: window.location.origin + "/api-anahtarlari" }
-        });
-    setBusy(false);
-    if (result.error) {
-      const message = result.error.message.toLowerCase();
-      if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-        setNotice("Bu e-posta zaten kayıtlı. Yeni hesap açmak yerine Giriş yap düğmesini kullan.");
-      } else if (message.includes("rate") || message.includes("email") && message.includes("send")) {
-        setNotice("Doğrulama e-postası şu an gönderilemedi. Biraz bekleyip tekrar dene.");
-      } else {
-        setNotice("İşlem başarısız: " + result.error.message);
-      }
-    } else if (mode === "signup" && !result.data.session) {
-      setNotice("Hesabın oluşturuldu! E-postana gelen doğrulama bağlantısını aç. Bağlantı seni Ay Zek API sayfasına geri getirecek.");
-    } else {
-      setNotice("Giriş başarılı.");
-      const current = result.data.user;
-      if (current) setUser({ id: current.id, email: current.email });
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+      setNotice("Geçerli bir e-posta adresi yaz. Örnek: ad@gmail.com"); return;
     }
+    if (password.length < 6) { setNotice("Şifren en az 6 karakter olmalı."); return; }
+    setBusy(true); setNotice("");
+    try {
+      const result = mode === "login"
+        ? await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
+        : await supabase.auth.signUp({ email: normalizedEmail, password, options: { emailRedirectTo: window.location.origin + "/api-anahtarlari" } });
+      if (result.error) {
+        const message = result.error.message.toLowerCase();
+        if (message.includes("invalid login credentials")) setNotice("E-posta veya şifre yanlış. Hesabın yoksa önce “Yeni hesap oluştur” seçeneğini kullan.");
+        else if (message.includes("email") && (message.includes("invalid") || message.includes("format"))) setNotice("E-posta adresi geçersiz. Örnek: ad@gmail.com");
+        else if (message.includes("email not confirmed")) setNotice("E-posta adresin henüz doğrulanmamış. Gelen kutundaki doğrulama bağlantısını aç.");
+        else if (message.includes("already") || message.includes("registered") || message.includes("exists")) setNotice("Bu e-posta zaten kayıtlı. Giriş yapmayı dene.");
+        else if (message.includes("rate") || (message.includes("email") && message.includes("send"))) setNotice("Doğrulama e-postası gönderilemedi. Biraz bekleyip tekrar dene.");
+        else setNotice("İşlem başarısız: " + result.error.message);
+      } else if (mode === "signup" && !result.data.session) {
+        setNotice("Hesabın oluşturuldu! E-postana gelen doğrulama bağlantısını aç.");
+      } else {
+        setNotice("Giriş başarılı.");
+        const current = result.data.user;
+        if (current) setUser({ id: current.id, email: current.email });
+      }
+    } catch {
+      setNotice("Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.");
+    } finally { setBusy(false); }
+  };
+
+  const resetPassword = async () => {
+    if (!supabase) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)) {
+      setNotice("Şifre sıfırlamak için geçerli e-posta adresini yaz."); return;
+    }
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo: window.location.origin + "/api-anahtarlari" });
+      setNotice(error ? "Şifre sıfırlama gönderilemedi: " + error.message : "Şifre sıfırlama bağlantısı gönderildiyse gelen kutunu kontrol et.");
+    } catch { setNotice("Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene."); }
+    finally { setBusy(false); }
   };
 
   const createKey = async () => {
@@ -135,7 +152,7 @@ export default function ApiKeysPage() {
         <input id="keyEmail" className="keyInput" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ornek@email.com"/>
         <label className="keyLabel" htmlFor="keyPassword" style={{marginTop:16}}>ŞİFRE</label>
         <input id="keyPassword" className="keyInput" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="En az 6 karakter"/>
-        <div className="keyAuthButtons"><button className="keyCreate" disabled={busy || !email || password.length < 6} onClick={() => void auth("login")}><LogIn size={17}/> Giriş yap</button><button className="keySecondary" disabled={busy || !email || password.length < 6} onClick={() => void auth("signup")}>Yeni hesap oluştur</button></div>
+        <div className="keyAuthButtons"><button className="keyCreate" disabled={busy || !email || password.length < 6} onClick={() => void auth("login")}><LogIn size={17}/> Giriş yap</button><button className="keySecondary" disabled={busy || !email || password.length < 6} onClick={() => void auth("signup")}>Yeni hesap oluştur</button><button className="keySecondary" disabled={busy || !email} onClick={() => void resetPassword()}>Şifremi unuttum</button></div>
         <p className="keyFootnote">Hesabın yoksa yeni hesap oluştur. E-posta doğrulaması istenebilir.</p>
       </section> :
       <section className="keyLayout">
