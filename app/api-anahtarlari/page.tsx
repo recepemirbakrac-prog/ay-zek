@@ -110,7 +110,21 @@ export default function ApiKeysPage() {
     finally { setBusy(false); }
   };
 
-  const updatePassword = async () => {\n    if (!supabase || newPassword.length < 6) return;\n    setBusy(true); setNotice("");\n    try {\n      const { error } = await supabase.auth.updateUser({ password: newPassword });\n      if (error) setNotice("Şifre güncellenemedi: " + error.message);\n      else { setNotice("Şifren başarıyla değiştirildi. Yeni şifrenle giriş yapabilirsin."); setRecovery(false); setNewPassword(""); await supabase.auth.signOut(); }\n    } catch { setNotice("Bağlantı kurulamadı. Tekrar dene."); }\n    finally { setBusy(false); }\n  };\n\n  const createKey = async () => {
+  const updatePassword = async () => {
+    if (!supabase || newPassword.length < 6) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) setNotice("Şifre güncellenemedi: " + error.message);
+      else {
+        setNotice("Şifren başarıyla değiştirildi. Yeni şifrenle giriş yapabilirsin.");
+        setRecovery(false); setNewPassword(""); await supabase.auth.signOut();
+      }
+    } catch { setNotice("Bağlantı kurulamadı. Tekrar dene."); }
+    finally { setBusy(false); }
+  };
+
+  const createKey = async () => {
     if (!supabase || !user) return;
     setBusy(true); setNotice("");
     const secret = makeKey();
