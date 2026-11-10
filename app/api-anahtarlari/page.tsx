@@ -14,7 +14,7 @@ const supabase: SupabaseClient | null = supabaseUrl && supabaseKey ? createClien
 function makeKey() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
-  const token = btoa(String.fromCharCode(...bytes)).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  const token = btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
   return "ayz_live_" + token;
 }
 async function hashKey(value: string) {
