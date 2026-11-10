@@ -33,7 +33,7 @@ export default function Home() {
 
       <section className="hero">
         <div className="heroGlow"/>
-        <div className="eyebrow"><span className="pulseDot"/> YENİ NESİL YAPAY ZEKÂ ASİSTANI</div>
+        <div className="eyebrow"><span className="pulseDot"/> AY ZEK 2.0 · YENİ NESİL YAPAY ZEKÂ ASİSTANI</div>
         <h1>Hayal et. Sor. <span>Birlikte yapalım.</span></h1>
         <p className="heroLead">Fikirlerini projelere dönüştür. Öğren, üret, kodla ve keşfet. İhtiyacın olan yapay zekâ araçları tek yerde.</p>
         <form className="heroPrompt" onSubmit={submit}>
@@ -42,7 +42,7 @@ export default function Home() {
           <button type="submit" aria-label="Gönder" disabled={!prompt.trim()}><ArrowRight size={19}/></button>
         </form>
         <div className="promptExamples"><span>Şunları deneyebilirsin:</span><button onClick={()=>setPrompt("Bana bir mobil uygulama fikri ver")}>Uygulama fikri üret</button><button onClick={()=>setPrompt("Kuantum bilgisayarı basitçe açıkla")}>Bir konuyu öğren</button><button onClick={()=>setPrompt("Kişisel portfolyo sitesi oluştur")}>Web sitesi tasarla</button></div>
-        <div className="heroStats"><div><b>6+</b><span>AI çalışma alanı</span></div><i/><div><b>Tek yer</b><span>Birçok farklı iş</span></div><i/><div><b>7/24</b><span>Her zaman yanında</span></div></div>
+        <div className="heroStats"><div><b>2.0</b><span>Yeni sürüm</span></div><i/><div><b>Tek yer</b><span>Birçok farklı iş</span></div><i/><div><b>7/24</b><span>Her zaman yanında</span></div></div>
       </section>
 
       <section className="toolsSection" id="araclar">
