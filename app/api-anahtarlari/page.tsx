@@ -31,6 +31,8 @@ export default function ApiKeysPage() {
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recovery, setRecovery] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     if (!supabase) return;
@@ -39,7 +41,8 @@ export default function ApiKeysPage() {
       const current = data.session?.user;
       setUser(current ? { id: current.id, email: current.email } : null);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
       const current = session?.user;
       setUser(current ? { id: current.id, email: current.email } : null);
       if (!current) setKeys([]);
@@ -107,7 +110,7 @@ export default function ApiKeysPage() {
     finally { setBusy(false); }
   };
 
-  const createKey = async () => {
+  const updatePassword = async () => {\n    if (!supabase || newPassword.length < 6) return;\n    setBusy(true); setNotice("");\n    try {\n      const { error } = await supabase.auth.updateUser({ password: newPassword });\n      if (error) setNotice("Şifre güncellenemedi: " + error.message);\n      else { setNotice("Şifren başarıyla değiştirildi. Yeni şifrenle giriş yapabilirsin."); setRecovery(false); setNewPassword(""); await supabase.auth.signOut(); }\n    } catch { setNotice("Bağlantı kurulamadı. Tekrar dene."); }\n    finally { setBusy(false); }\n  };\n\n  const createKey = async () => {
     if (!supabase || !user) return;
     setBusy(true); setNotice("");
     const secret = makeKey();
@@ -145,7 +148,7 @@ export default function ApiKeysPage() {
         <h1>API anahtarlarını <em>yönet.</em></h1>
         <p>Hesabınla giriş yap, gerçek API anahtarları oluştur, iptal et ve isteklerde doğrula.</p>
       </section>
-      {!supabase ? <div className="keyPanel keyAuthPanel"><b>Kurulum eksik</b><p>Supabase bağlantısı için Vercel ortam değişkenleri henüz ayarlanmamış.</p></div> :
+      {recovery ? <section className="keyAuthPanel keyPanel"><div className="keyPanelTitle"><div className="keyIcon"><KeyRound size={19}/></div><div><b>Yeni şifre belirle</b><small>Hesabın için yeni bir şifre oluştur</small></div></div><label className="keyLabel" htmlFor="newPassword">YENİ ŞİFRE</label><input id="newPassword" className="keyInput" type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="En az 6 karakter"/><button className="keyCreate" disabled={busy || newPassword.length < 6} onClick={() => void updatePassword()}>Şifremi değiştir</button></section> : !supabase ? <div className="keyPanel keyAuthPanel"><b>Kurulum eksik</b><p>Supabase bağlantısı için Vercel ortam değişkenleri henüz ayarlanmamış.</p></div> :
       !user ? <section className="keyAuthPanel keyPanel">
         <div className="keyPanelTitle"><div className="keyIcon"><LogIn size={19}/></div><div><b>Hesabına giriş yap</b><small>API anahtarların hesabına özel ve güvenli saklanır</small></div></div>
         <label className="keyLabel" htmlFor="keyEmail">E-POSTA</label>
