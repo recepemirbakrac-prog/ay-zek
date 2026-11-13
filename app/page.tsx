@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, BrainCircuit, FileText, ImagePlus, MessageCircle,
+  ArrowRight, BrainCircuit, Download, FileText, ImagePlus, MessageCircle,
   Music2, Search, Sparkles, Gamepad2, ShieldCheck
 } from "lucide-react";
 import "./home.css";
@@ -13,7 +13,8 @@ const tools = [
   { title: "Yazı ve belge", desc: "Metin, özet, e-posta ve sunum hazırla.", icon: FileText, href: "/chat?prompt=Benim%20i%C3%A7in%20profesyonel%20bir%20belge%20haz%C4%B1rla.", tag: "Üretkenlik", tone: "orange" },
   { title: "Kodlama yardımcısı", desc: "Kod yaz, açıkla ve hataları çöz.", icon: BrainCircuit, href: "/chat?prompt=Bir%20yaz%C4%B1l%C4%B1m%20uzman%C4%B1%20gibi%20bana%20yard%C4%B1m%20et.", tag: "Geliştirici", tone: "green" },
   { title: "Yaratıcı fikirler", desc: "Şarkı, hikâye, slogan ve içerik üret.", icon: Music2, href: "/chat?prompt=Bana%20yarat%C4%B1c%C4%B1%20bir%20fikir%20%C3%BCret.", tag: "Yaratıcılık", tone: "pink" },
-  { title: "Araştırma asistanı", desc: "Bir konuyu adım adım incele ve açıkla.", icon: Search, href: "/chat?prompt=Bir%20ara%C5%9Ft%C4%B1rma%20asistan%C4%B1%20gibi%20%C3%A7al%C4%B1%C5%9F.", tag: "Keşfet", tone: "cyan" }
+  { title: "Araştırma asistanı", desc: "Bir konuyu adım adım incele ve açıkla.", icon: Search, href: "/chat?prompt=Bir%20ara%C5%9Ft%C4%B1rma%20asistan%C4%B1%20gibi%20%C3%A7al%C4%B1%C5%9F.", tag: "Keşfet", tone: "cyan" },
+  { title: "Uygulama mağazası", desc: "Android ve Windows için resmî indirme bağlantılarını keşfet.", icon: Download, href: "/indir", tag: "Mağaza", tone: "blue" }
 ];
 
 export default function Home() {
@@ -27,7 +28,7 @@ export default function Home() {
     <main className="homeShell">
       <header className="homeNav">
         <Link href="/" className="brandMark"><span className="brandIcon"><Sparkles size={21}/></span><span>Ay Zek<span className="brandAI"> AI</span></span></Link>
-        <nav><Link href="/chat">Sohbet</Link><a href="#araclar">Araçlar</a><Link href="/api-anahtarlari">API Anahtarları</Link></nav>
+        <nav><Link href="/chat">Sohbet</Link><Link href="/indir">Uygulamalar</Link><a href="#araclar">Araçlar</a><Link href="/api-anahtarlari">API Anahtarları</Link></nav>
         <Link className="navCta" href="/chat">Başla <ArrowRight size={16}/></Link>
       </header>
 
