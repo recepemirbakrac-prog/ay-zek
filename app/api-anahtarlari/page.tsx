@@ -193,7 +193,7 @@ export default function ApiKeysPage() {
         </> : <>
           <p className="keyInfo"><ShieldCheck size={17}/><span>6 haneli kod, yönetici e-posta adresine gönderildi. Kod 10 dakika içinde kullanılmalıdır.</span></p>
           <label className="keyLabel" htmlFor="adminOtp">E-POSTA DOĞRULAMA KODU</label>
-          <input id="adminOtp" className="keyInput" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\\D/g, "").slice(0,6))} placeholder="000000" />
+          <input id="adminOtp" className="keyInput" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0,6))} placeholder="000000" />
           <button className="keyCreate" disabled={busy || otp.length !== 6} onClick={() => void verifyEmailCode()}>
             <ShieldCheck size={17}/>{busy ? "Doğrulanıyor..." : "Kodu doğrula ve giriş yap"}
           </button>
