@@ -157,7 +157,7 @@ export default function ApiKeysPage() {
           <label className="keyLabel" htmlFor="confirmAdminPassword" style={{marginTop:16}}>ŞİFREYİ TEKRAR YAZ</label>
           <input id="confirmAdminPassword" className="keyInput" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Şifreni tekrar gir" />
         </>}
-        <button className="keyCreate" disabled={busy || password.length < 12 || (setupToken && confirmPassword.length < 12)} onClick={() => void authenticate(setupToken ? "setup" : "login")}>
+        <button className="keyCreate" disabled={busy || password.length < 12 || (!!setupToken && confirmPassword.length < 12)} onClick={() => void authenticate(setupToken ? "setup" : "login")}>
           <LogIn size={17}/>{busy ? "Kontrol ediliyor..." : setupToken ? "Yönetici şifresini oluştur" : "Giriş yap"}
         </button>
         <p className="keyFootnote">Şifren Supabase Auth tarafından güvenli biçimde saklanır. E-posta veya kullanıcı adı gerekmez.</p>
