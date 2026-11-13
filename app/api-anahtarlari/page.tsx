@@ -103,7 +103,7 @@ export default function ApiKeysPage() {
   };
 
   const verifyEmailCode = async () => {
-    if (!supabase || !challengeToken || !/^\\d{6}$/.test(otp)) {
+    if (!supabase || !challengeToken || !/^\d{6}$/.test(otp)) {
       setNotice("E-postana gelen 6 haneli kodu gir."); return;
     }
     setBusy(true); setNotice("");
@@ -187,7 +187,7 @@ export default function ApiKeysPage() {
             <input id="confirmAdminPassword" className="keyInput" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Şifreni tekrar gir" />
           </>}
           <button className="keyCreate" disabled={busy || password.length < 12 || (!!setupToken && confirmPassword.length < 12)} onClick={() => void authenticate(setupToken ? "setup" : "login")}>
-            <LogIn size={17}/>{busy ? "Kontrol ediliyor..." : setupToken ? "Şifreyi oluştur ve kod gönder" : "Giriş yap ve kod gönder"}
+            <LogIn size={17}/>{busy ? "Kontrol ediliyor..." : setupToken ? "Şifreyi oluştur ve kod gönder" : "Şifre Al"}
           </button>
           <p className="keyFootnote">Şifren doğruysa yönetici e-posta adresine tek kullanımlık kod gönderilir. E-posta adresi gizli tutulur.</p>
         </> : <>
