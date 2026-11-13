@@ -7,7 +7,7 @@ export default function SpaceGame(){
  const canvas=useRef<HTMLCanvasElement>(null);
  const keys=useRef({left:false,right:false,fire:false});
  const [score,setScore]=useState(0),[lives,setLives]=useState(3),[level,setLevel]=useState(1),[playing,setPlaying]=useState(false),[over,setOver]=useState(false),[best,setBest]=useState(0);
- const reset=useRef<()=>void>(()=>{});
+ const reset=useRef<()=>void>(()=>{});\n const bestRef=useRef(0);
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext("2d");if(!el||!ctx)return;
   let w=900,h=560,ship=450,shots:Shot[]=[],enemies:Enemy[]=[],stars=Array.from({length:100},()=>({x:Math.random()*w,y:Math.random()*h,s:20+Math.random()*70})),points=0,hp=3,lvl=1,active=false,last=0,spawn=0,cool=0,raf=0;
@@ -16,7 +16,7 @@ export default function SpaceGame(){
   const down=(e:KeyboardEvent)=>{if(["ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();if(["ArrowLeft","a","A"].includes(e.key))keys.current.left=true;if(["ArrowRight","d","D"].includes(e.key))keys.current.right=true;if(e.key===" ")keys.current.fire=true;};
   const up=(e:KeyboardEvent)=>{if(["ArrowLeft","a","A"].includes(e.key))keys.current.left=false;if(["ArrowRight","d","D"].includes(e.key))keys.current.right=false;if(e.key===" ")keys.current.fire=false;};
   window.addEventListener("keydown",down);window.addEventListener("keyup",up);
-  try{setBest(Number(localStorage.getItem("ayzek-space-record")||0));}catch{}
+  try{const saved=Number(localStorage.getItem("ayzek-space-record")||0);bestRef.current=saved;setBest(saved);}catch{}
   const loop=(t:number)=>{const dt=Math.min((t-last)/1000||0,.04);last=t;
    const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,"#080d27");bg.addColorStop(1,"#17234b");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
    for(const s of stars){s.y+=s.s*dt;if(s.y>h){s.y=0;s.x=Math.random()*w;}ctx.fillStyle="rgba(220,238,255,.65)";ctx.fillRect(s.x,s.y,2,2);}
@@ -24,7 +24,7 @@ export default function SpaceGame(){
     spawn-=dt;if(spawn<=0){enemies.push({x:30+Math.random()*(w-60),y:-20,speed:75+lvl*10});spawn=Math.max(.35,1-lvl*.045);}
     shots.forEach(s=>s.y-=580*dt);shots=shots.filter(s=>s.y>-15);
     enemies.forEach(e=>e.y+=e.speed*dt);
-    for(const e of enemies){for(const s of shots){if(Math.hypot(e.x-s.x,e.y-s.y)<22){e.y=h+50;s.y=-30;points+=10;setScore(points);if(points>best){setBest(points);try{localStorage.setItem("ayzek-space-record",String(points));}catch{}}}}}
+    for(const e of enemies){for(const s of shots){if(Math.hypot(e.x-s.x,e.y-s.y)<22){e.y=h+50;s.y=-30;points+=10;setScore(points);if(points>bestRef.current){bestRef.current=points;setBest(points);try{localStorage.setItem("ayzek-space-record",String(points));}catch{}}}}}
     shots=shots.filter(s=>s.y>-15);enemies=enemies.filter(e=>e.y<h+30);
     for(const e of enemies){if(Math.hypot(e.x-ship,e.y-(h-48))<27){e.y=h+80;hp--;setLives(hp);}}
     if(enemies.some(e=>e.y>h-5)){hp--;setLives(hp);enemies=enemies.filter(e=>e.y<=h-5);}
@@ -39,7 +39,7 @@ export default function SpaceGame(){
    raf=requestAnimationFrame(loop);
   };raf=requestAnimationFrame(loop);
   return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",size);window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};
- },[best]);
+ },[]);
  const hold=(key:"left"|"right"|"fire",v:boolean)=>(e:React.PointerEvent<HTMLButtonElement>)=>{e.preventDefault();keys.current[key]=v;};
  const btn:React.CSSProperties={padding:"13px 23px",borderRadius:13,border:"1px solid #657bb8",background:"#294e87",color:"white",fontWeight:800,touchAction:"none"};
  return <main style={{minHeight:"100vh",padding:"22px 16px 40px",background:"radial-gradient(ellipse at top,#202b5b,#080b1b 70%)",color:"white",fontFamily:"Arial,sans-serif"}}><div style={{maxWidth:1000,margin:"auto"}}>
