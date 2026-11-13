@@ -16,6 +16,12 @@ export default function SpaceGame(){
   const down=(e:KeyboardEvent)=>{if(["ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();if(["ArrowLeft","a","A"].includes(e.key))keys.current.left=true;if(["ArrowRight","d","D"].includes(e.key))keys.current.right=true;if(e.key===" ")keys.current.fire=true;};
   const up=(e:KeyboardEvent)=>{if(["ArrowLeft","a","A"].includes(e.key))keys.current.left=false;if(["ArrowRight","d","D"].includes(e.key))keys.current.right=false;if(e.key===" ")keys.current.fire=false;};
   window.addEventListener("keydown",down);window.addEventListener("keyup",up);
+  let dragging=false;
+  const moveToPointer=(e:PointerEvent)=>{const r=el.getBoundingClientRect();ship=Math.max(25,Math.min(w-25,(e.clientX-r.left)*(w/r.width)));};
+  const pointerDown=(e:PointerEvent)=>{dragging=true;el.setPointerCapture(e.pointerId);moveToPointer(e);};
+  const pointerMove=(e:PointerEvent)=>{if(dragging)moveToPointer(e);};
+  const pointerUp=()=>{dragging=false;};
+  el.addEventListener("pointerdown",pointerDown);el.addEventListener("pointermove",pointerMove);el.addEventListener("pointerup",pointerUp);el.addEventListener("pointercancel",pointerUp);
   try{const saved=Number(localStorage.getItem("ayzek-space-record")||0);bestRef.current=saved;setBest(saved);}catch{}
   const loop=(t:number)=>{const dt=Math.min((t-last)/1000||0,.04);last=t;
    const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,"#080d27");bg.addColorStop(1,"#17234b");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
@@ -38,7 +44,7 @@ export default function SpaceGame(){
    ctx.save();ctx.translate(ship,h-48);ctx.shadowColor="#54eaff";ctx.shadowBlur=20;ctx.fillStyle="#62e6ff";ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(19,18);ctx.lineTo(0,10);ctx.lineTo(-19,18);ctx.closePath();ctx.fill();ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(0,-5,5,9,0,0,Math.PI*2);ctx.fill();ctx.restore();
    raf=requestAnimationFrame(loop);
   };raf=requestAnimationFrame(loop);
-  return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",size);window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};
+  return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",size);window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);el.removeEventListener("pointerdown",pointerDown);el.removeEventListener("pointermove",pointerMove);el.removeEventListener("pointerup",pointerUp);el.removeEventListener("pointercancel",pointerUp);};
  },[]);
  const hold=(key:"left"|"right"|"fire",v:boolean)=>(e:React.PointerEvent<HTMLButtonElement>)=>{e.preventDefault();keys.current[key]=v;};
  const btn:React.CSSProperties={padding:"13px 23px",borderRadius:13,border:"1px solid #657bb8",background:"#294e87",color:"white",fontWeight:800,touchAction:"none"};
@@ -47,9 +53,9 @@ export default function SpaceGame(){
  <div style={{textAlign:"center",margin:"26px 0 20px"}}><div style={{color:"#74eaff",letterSpacing:4,fontSize:12}}>GALAKSİ SENİ BEKLİYOR</div><h1 style={{fontSize:"clamp(34px,6vw,56px)",margin:"8px 0"}}>UZAY <span style={{color:"#74eaff"}}>SAVAŞI</span></h1><p style={{color:"#aab6d8"}}>Düşman gemilerini yok et, galaksiyi kurtar!</p></div>
  <section style={{padding:12,borderRadius:20,background:"#131d3be8",border:"1px solid #3a4b7b",boxShadow:"0 25px 80px #0008"}}>
  <div style={{display:"flex",justifyContent:"space-around",textAlign:"center",padding:"5px 0 14px"}}><div><small>PUAN</small><div style={{fontSize:25,color:"#79edff"}}>{score}</div></div><div><small>CAN</small><div style={{fontSize:23,color:"#ff7597"}}>{"♥".repeat(Math.max(0,lives))}{"♡".repeat(Math.max(0,3-lives))}</div></div><div><small>SEVİYE</small><div style={{fontSize:25}}>{level}</div></div><div><small>REKOR</small><div style={{fontSize:25,color:"#ffd47b"}}>{best}</div></div></div>
- <div style={{height:"min(62vw,560px)",minHeight:420,position:"relative",overflow:"hidden",borderRadius:14,border:"1px solid #42527c"}}><canvas ref={canvas} style={{width:"100%",height:"100%",display:"block"}}/>
+ <div style={{height:"min(62vw,560px)",minHeight:420,position:"relative",overflow:"hidden",borderRadius:14,border:"1px solid #42527c"}}><canvas ref={canvas} style={{width:"100%",height:"100%",display:"block",touchAction:"none",cursor:"crosshair"}}/>
  {(!playing)&&<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:20,background:"#080d27b8"}}><div style={{fontSize:48}}>{over?"💥":"🛸"}</div><h2>{over?"OYUN BİTTİ":"SAVAŞA HAZIR MISIN?"}</h2><p style={{color:"#bdc8e4"}}>{over?"Toplam "+score+" puan kazandın. Bir tur daha dene!":"Düşmanları vur, çarpışmalardan kaç ve hayatta kal."}</p><button onClick={()=>{setScore(0);setLives(3);setLevel(1);setOver(false);setPlaying(true);reset.current();}} style={{...btn,background:"linear-gradient(90deg,#40d9ed,#7776ff)",color:"#071024",padding:"14px 30px"}}>{over?"TEKRAR OYNA":"OYUNA BAŞLA"} ▶</button></div>}</div>
  <div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap",paddingTop:14}}><button style={btn} onPointerDown={hold("left",true)} onPointerUp={hold("left",false)} onPointerLeave={hold("left",false)}>◀ SOL</button><button style={{...btn,background:"#783b91"}} onPointerDown={hold("fire",true)} onPointerUp={hold("fire",false)} onPointerLeave={hold("fire",false)}>✦ ATEŞ</button><button style={btn} onPointerDown={hold("right",true)} onPointerUp={hold("right",false)} onPointerLeave={hold("right",false)}>SAĞ ▶</button></div></section>
- <p style={{textAlign:"center",color:"#9eaccd",fontSize:13,lineHeight:1.8}}>Bilgisayar: ← → veya A / D ile hareket et, BOŞLUK ile ateş et.<br/>Telefon: SOL, SAĞ ve ATEŞ tuşlarına basılı tut. Her 100 puanda seviye atlarsın.</p>
+ <p style={{textAlign:"center",color:"#9eaccd",fontSize:13,lineHeight:1.8}}>Bilgisayar: ← → veya A / D ile hareket et, BOŞLUK ile ateş et.<br/>Telefon: SOL, SAĞ ve ATEŞ tuşlarına basılı tut veya gemiyi parmağınla sürükle. Her 100 puanda seviye atlarsın.</p>
  </div></main>;
 }
