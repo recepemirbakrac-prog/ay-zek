@@ -30,6 +30,9 @@ export default function ApiKeysPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [setupToken, setSetupToken] = useState("");
+  const [challengeToken, setChallengeToken] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpStage, setOtpStage] = useState(false);
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -80,24 +83,49 @@ export default function ApiKeysPage() {
       const { data, error } = await supabase.functions.invoke("username-auth", {
         body: { action: mode, password, ...(mode === "setup" ? { setupToken } : {}) },
       });
+      if (error || !data?.otpSent || !data?.challengeToken) {
+        setNotice(data?.error || error?.message || "Doğrulama kodu gönderilemedi. Tekrar dene.");
+        return;
+      }
+      setChallengeToken(data.challengeToken);
+      setOtpStage(true);
+      setOtp("");
+      setPassword("");
+      setNotice("Güvenlik kodu yönetici e-posta adresine gönderildi.");
+      if (mode === "setup") {
+        setSetupToken("");
+        setConfirmPassword("");
+        window.history.replaceState({}, "", "/api-anahtarlari");
+      }
+    } catch {
+      setNotice("Sunucuya bağlanılamadı. İnternetini kontrol edip tekrar dene.");
+    } finally { setBusy(false); }
+  };
+
+  const verifyEmailCode = async () => {
+    if (!supabase || !challengeToken || !/^\\d{6}$/.test(otp)) {
+      setNotice("E-postana gelen 6 haneli kodu gir."); return;
+    }
+    setBusy(true); setNotice("");
+    try {
+      const { data, error } = await supabase.functions.invoke("username-auth", {
+        body: { action: "verify", challengeToken, otp },
+      });
       if (error || !data?.session?.access_token || !data?.session?.refresh_token) {
-        setNotice(data?.error || error?.message || "Giriş başarısız. Tekrar dene.");
+        setNotice(data?.error || error?.message || "Kod doğrulanamadı. Yeniden giriş yap.");
         return;
       }
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
       });
-      if (sessionError) { setNotice("Oturum açılamadı. Tekrar dene."); return; }
-      setNotice(mode === "setup" ? "Yönetici şifren oluşturuldu. API anahtarların hesabına aktarıldı." : "Giriş başarılı.");
-      if (mode === "setup") {
-        setSetupToken("");
-        setConfirmPassword("");
-        window.history.replaceState({}, "", "/api-anahtarlari");
-      }
-      setPassword("");
+      if (sessionError) { setNotice("Oturum açılamadı. Tekrar giriş yap."); return; }
+      setOtpStage(false);
+      setChallengeToken("");
+      setOtp("");
+      setNotice("E-posta doğrulandı. Yönetici girişi başarılı.");
     } catch {
-      setNotice("Sunucuya bağlanılamadı. İnternetini kontrol edip tekrar dene.");
+      setNotice("Doğrulama sırasında bağlantı hatası oluştu.");
     } finally { setBusy(false); }
   };
 
@@ -150,17 +178,28 @@ export default function ApiKeysPage() {
       </section>
       {!supabase ? <div className="keyPanel keyAuthPanel"><b>Kurulum eksik</b><p>Supabase bağlantısı için Vercel ortam değişkenleri ayarlanmamış.</p></div> :
       !user ? <section className="keyAuthPanel keyPanel">
-        <div className="keyPanelTitle"><div className="keyIcon"><LogIn size={19}/></div><div><b>{setupToken ? "Yönetici şifreni oluştur" : "Yönetici girişi"}</b><small>{setupToken ? "Bu işlem yalnızca bir kez yapılır" : "Yalnızca tek yönetici hesabı bulunur"}</small></div></div>
-        <label className="keyLabel" htmlFor="adminPassword">{setupToken ? "YÖNETİCİ ŞİFRESİ" : "YÖNETİCİ ŞİFREN"}</label>
-        <input id="adminPassword" className="keyInput" type="password" autoComplete={setupToken ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="En az 12 karakter" />
-        {setupToken && <>
-          <label className="keyLabel" htmlFor="confirmAdminPassword" style={{marginTop:16}}>ŞİFREYİ TEKRAR YAZ</label>
-          <input id="confirmAdminPassword" className="keyInput" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Şifreni tekrar gir" />
+        <div className="keyPanelTitle"><div className="keyIcon"><LogIn size={19}/></div><div><b>{otpStage ? "E-posta doğrulaması" : setupToken ? "Yönetici şifreni oluştur" : "Yönetici girişi"}</b><small>{otpStage ? "İkinci güvenlik adımı" : setupToken ? "Bu işlem yalnızca bir kez yapılır" : "Tek yönetici hesabı · Şifre + e-posta kodu"}</small></div></div>
+        {!otpStage ? <>
+          <label className="keyLabel" htmlFor="adminPassword">{setupToken ? "YÖNETİCİ ŞİFRESİ" : "YÖNETİCİ ŞİFREN"}</label>
+          <input id="adminPassword" className="keyInput" type="password" autoComplete={setupToken ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="En az 12 karakter" />
+          {setupToken && <>
+            <label className="keyLabel" htmlFor="confirmAdminPassword" style={{marginTop:16}}>ŞİFREYİ TEKRAR YAZ</label>
+            <input id="confirmAdminPassword" className="keyInput" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Şifreni tekrar gir" />
+          </>}
+          <button className="keyCreate" disabled={busy || password.length < 12 || (!!setupToken && confirmPassword.length < 12)} onClick={() => void authenticate(setupToken ? "setup" : "login")}>
+            <LogIn size={17}/>{busy ? "Kontrol ediliyor..." : setupToken ? "Şifreyi oluştur ve kod gönder" : "Giriş yap ve kod gönder"}
+          </button>
+          <p className="keyFootnote">Şifren doğruysa yönetici e-posta adresine tek kullanımlık kod gönderilir. E-posta adresi gizli tutulur.</p>
+        </> : <>
+          <p className="keyInfo"><ShieldCheck size={17}/><span>6 haneli kod, yönetici e-posta adresine gönderildi. Kod 10 dakika içinde kullanılmalıdır.</span></p>
+          <label className="keyLabel" htmlFor="adminOtp">E-POSTA DOĞRULAMA KODU</label>
+          <input id="adminOtp" className="keyInput" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\\D/g, "").slice(0,6))} placeholder="000000" />
+          <button className="keyCreate" disabled={busy || otp.length !== 6} onClick={() => void verifyEmailCode()}>
+            <ShieldCheck size={17}/>{busy ? "Doğrulanıyor..." : "Kodu doğrula ve giriş yap"}
+          </button>
+          <button className="keyClose" disabled={busy} onClick={() => { setOtpStage(false); setChallengeToken(""); setOtp(""); setNotice("Tekrar giriş yapmak için yönetici şifreni yaz."); }}>Geri dön</button>
+          <p className="keyFootnote">Kod gelmediyse gereksiz/spam klasörünü de kontrol et.</p>
         </>}
-        <button className="keyCreate" disabled={busy || password.length < 12 || (!!setupToken && confirmPassword.length < 12)} onClick={() => void authenticate(setupToken ? "setup" : "login")}>
-          <LogIn size={17}/>{busy ? "Kontrol ediliyor..." : setupToken ? "Yönetici şifresini oluştur" : "Giriş yap"}
-        </button>
-        <p className="keyFootnote">Şifren Supabase Auth tarafından güvenli biçimde saklanır. E-posta veya kullanıcı adı gerekmez.</p>
       </section> :
       <section className="keyLayout">
         <div className="keyPanel">
@@ -179,7 +218,7 @@ export default function ApiKeysPage() {
       </section>}
       {notice && <div className="keyNotice keyGlobalNotice">{notice}</div>}
       {newSecret && <div className="keyModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="secretTitle"><div className="keySecretModal"><div className="keySuccess"><Check size={22}/></div><h2 id="secretTitle">Anahtarın hazır!</h2><p>Bu gizli anahtar daha sonra tekrar gösterilmeyecek. Şimdi kopyalayıp güvenli bir yere kaydet.</p><code className="keySecret">{newSecret}</code><button className="keyCreate" onClick={() => void copy(newSecret)}><Copy size={17}/> Anahtarı kopyala</button><button className="keyClose" onClick={() => setNewSecret("")}>Kaydettim, kapat</button></div></div>}
-      <footer className="keyFooter">Ay Zek API · Tek yönetici hesabı ve güvenli anahtar yönetimi.</footer>
+      <footer className="keyFooter">Ay Zek API · Tek yönetici hesabı · Şifre ve e-posta doğrulaması.</footer>
     </main>
   );
 }
