@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, Copy, KeyRound, Plus, ShieldCheck, Trash2, Check, Sparkles, LogIn, LogOut } from "lucide-react";
@@ -27,24 +27,24 @@ export default function ApiKeysPage() {
   const [keys, setKeys] = useState<SavedKey[]>([]);
   const [newSecret, setNewSecret] = useState("");
   const [notice, setNotice] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [recovery, setRecovery] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("setup") ?? "";
+    setSetupToken(token);
     if (!supabase) return;
     void supabase.auth.getSession().then(({ data, error }) => {
       if (error) setNotice("Oturum kontrol edilemedi. Sayfayı yenileyip tekrar dene.");
       const current = data.session?.user;
-      setUser(current ? { id: current.id, email: current.email } : null);
+      setUser(current ? { id: current.id } : null);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") setRecovery(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const current = session?.user;
-      setUser(current ? { id: current.id, email: current.email } : null);
+      setUser(current ? { id: current.id } : null);
       if (!current) setKeys([]);
     });
     return () => subscription.unsubscribe();
@@ -62,66 +62,43 @@ export default function ApiKeysPage() {
         else setKeys((data ?? []) as SavedKey[]);
       });
     return () => { active = false; };
-  }, [user?.id]); 
+  }, [user?.id]);
 
-  const auth = async (mode: "login" | "signup") => {
+  const authenticate = async (mode: "login" | "setup") => {
     if (!supabase) return;
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setNotice("Geçerli bir e-posta adresi yaz. Örnek: ad@gmail.com"); return;
+    if (password.length < 12 || password.length > 128) {
+      setNotice("Şifre en az 12, en fazla 128 karakter olmalı."); return;
     }
-    if (password.length < 6) { setNotice("Şifren en az 6 karakter olmalı."); return; }
+    if (mode === "setup" && password !== confirmPassword) {
+      setNotice("Şifreler eşleşmiyor."); return;
+    }
+    if (mode === "setup" && !setupToken) {
+      setNotice("Tek seferlik kurulum bağlantısı eksik. Kurulum bağlantısını kullan."); return;
+    }
     setBusy(true); setNotice("");
     try {
-      const result = mode === "login"
-        ? await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
-        : await supabase.auth.signUp({ email: normalizedEmail, password, options: { emailRedirectTo: window.location.origin + "/api-anahtarlari" } });
-      if (result.error) {
-        const message = result.error.message.toLowerCase();
-        if (message.includes("invalid login credentials")) setNotice("E-posta veya şifre yanlış. Hesabın yoksa önce “Yeni hesap oluştur” seçeneğini kullan.");
-        else if (message.includes("email") && (message.includes("invalid") || message.includes("format"))) setNotice("E-posta adresi geçersiz. Örnek: ad@gmail.com");
-        else if (message.includes("email not confirmed")) setNotice("E-posta adresin henüz doğrulanmamış. Gelen kutundaki doğrulama bağlantısını aç.");
-        else if (message.includes("already") || message.includes("registered") || message.includes("exists")) setNotice("Bu e-posta zaten kayıtlı. Giriş yapmayı dene.");
-        else if (message.includes("rate") || (message.includes("email") && message.includes("send"))) setNotice("Doğrulama e-postası gönderilemedi. Biraz bekleyip tekrar dene.");
-        else setNotice("İşlem başarısız: " + result.error.message);
-      } else if (mode === "signup" && !result.data.session) {
-        setNotice("Hesabın oluşturuldu! E-postana gelen doğrulama bağlantısını aç.");
-      } else {
-        setNotice("Giriş başarılı.");
-        const current = result.data.user;
-        if (current) setUser({ id: current.id, email: current.email });
+      const { data, error } = await supabase.functions.invoke("username-auth", {
+        body: { action: mode, password, ...(mode === "setup" ? { setupToken } : {}) },
+      });
+      if (error || !data?.session?.access_token || !data?.session?.refresh_token) {
+        setNotice(data?.error || error?.message || "Giriş başarısız. Tekrar dene.");
+        return;
       }
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+      if (sessionError) { setNotice("Oturum açılamadı. Tekrar dene."); return; }
+      setNotice(mode === "setup" ? "Yönetici şifren oluşturuldu. API anahtarların hesabına aktarıldı." : "Giriş başarılı.");
+      if (mode === "setup") {
+        setSetupToken("");
+        setConfirmPassword("");
+        window.history.replaceState({}, "", "/api-anahtarlari");
+      }
+      setPassword("");
     } catch {
-      setNotice("Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.");
+      setNotice("Sunucuya bağlanılamadı. İnternetini kontrol edip tekrar dene.");
     } finally { setBusy(false); }
-  };
-
-  const resetPassword = async () => {
-    if (!supabase) return;
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setNotice("Şifre sıfırlamak için geçerli e-posta adresini yaz."); return;
-    }
-    setBusy(true); setNotice("");
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo: window.location.origin + "/api-anahtarlari" });
-      setNotice(error ? "Şifre sıfırlama gönderilemedi: " + error.message : "Şifre sıfırlama bağlantısı gönderildiyse gelen kutunu kontrol et.");
-    } catch { setNotice("Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene."); }
-    finally { setBusy(false); }
-  };
-
-  const updatePassword = async () => {
-    if (!supabase || newPassword.length < 6) return;
-    setBusy(true); setNotice("");
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) setNotice("Şifre güncellenemedi: " + error.message);
-      else {
-        setNotice("Şifren başarıyla değiştirildi. Yeni şifrenle giriş yapabilirsin.");
-        setRecovery(false); setNewPassword(""); await supabase.auth.signOut();
-      }
-    } catch { setNotice("Bağlantı kurulamadı. Tekrar dene."); }
-    finally { setBusy(false); }
   };
 
   const createKey = async () => {
@@ -136,7 +113,10 @@ export default function ApiKeysPage() {
     setBusy(false);
     if (error) { setNotice("Anahtar oluşturulamadı: " + error.message); return; }
     setNewSecret(secret);
-
+    const { data } = await supabase.from("api_keys")
+      .select("id,name,key_prefix,created_at,last_used_at,revoked_at")
+      .order("created_at", { ascending: false });
+    setKeys((data ?? []) as SavedKey[]);
   };
 
   const copy = async (value: string) => {
@@ -148,29 +128,39 @@ export default function ApiKeysPage() {
     if (!supabase) return;
     const { error } = await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id);
     if (error) setNotice("Anahtar iptal edilemedi: " + error.message);
-    else { setNotice("API anahtarı iptal edildi."); setKeys(current => current.map(item => item.id === id ? { ...item, revoked_at: new Date().toISOString() } : item)); }
+    else {
+      setNotice("API anahtarı iptal edildi.");
+      setKeys(current => current.map(item => item.id === id ? { ...item, revoked_at: new Date().toISOString() } : item));
+    }
   };
 
   return (
     <main className="keyPage">
       <header className="keyNav">
         <Link href="/" className="keyBrand"><span><Sparkles size={19}/></span>Ay Zek <em>API</em></Link>
-        <div className="keyNavRight">{user && <small>{user.email}</small>}<Link href="/" className="keyBack"><ArrowLeft size={16}/> Ay Zek'e dön</Link></div>
+        <div className="keyNavRight">
+          {user && <small>Yönetici oturumu</small>}
+          <Link href="/" className="keyBack"><ArrowLeft size={16}/> Ay Zek'e dön</Link>
+        </div>
       </header>
       <section className="keyHero">
-        <div className="keyEyebrow"><span/> GELİŞTİRİCİ ARAÇLARI</div>
+        <div className="keyEyebrow"><span/> GÜVENLİ YÖNETİCİ ALANI</div>
         <h1>API anahtarlarını <em>yönet.</em></h1>
-        <p>Hesabınla giriş yap, gerçek API anahtarları oluştur, iptal et ve isteklerde doğrula.</p>
+        <p>Tek yönetici şifrenle giriş yap, API anahtarlarını güvenli şekilde oluştur ve iptal et.</p>
       </section>
-      {recovery ? <section className="keyAuthPanel keyPanel"><div className="keyPanelTitle"><div className="keyIcon"><KeyRound size={19}/></div><div><b>Yeni şifre belirle</b><small>Hesabın için yeni bir şifre oluştur</small></div></div><label className="keyLabel" htmlFor="newPassword">YENİ ŞİFRE</label><input id="newPassword" className="keyInput" type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="En az 6 karakter"/><button className="keyCreate" disabled={busy || newPassword.length < 6} onClick={() => void updatePassword()}>Şifremi değiştir</button></section> : !supabase ? <div className="keyPanel keyAuthPanel"><b>Kurulum eksik</b><p>Supabase bağlantısı için Vercel ortam değişkenleri henüz ayarlanmamış.</p></div> :
+      {!supabase ? <div className="keyPanel keyAuthPanel"><b>Kurulum eksik</b><p>Supabase bağlantısı için Vercel ortam değişkenleri ayarlanmamış.</p></div> :
       !user ? <section className="keyAuthPanel keyPanel">
-        <div className="keyPanelTitle"><div className="keyIcon"><LogIn size={19}/></div><div><b>Hesabına giriş yap</b><small>API anahtarların hesabına özel ve güvenli saklanır</small></div></div>
-        <label className="keyLabel" htmlFor="keyEmail">E-POSTA</label>
-        <input id="keyEmail" className="keyInput" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ornek@email.com"/>
-        <label className="keyLabel" htmlFor="keyPassword" style={{marginTop:16}}>ŞİFRE</label>
-        <input id="keyPassword" className="keyInput" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="En az 6 karakter"/>
-        <div className="keyAuthButtons"><button className="keyCreate" disabled={busy || !email || password.length < 6} onClick={() => void auth("login")}><LogIn size={17}/> Giriş yap</button><button className="keySecondary" disabled={busy || !email || password.length < 6} onClick={() => void auth("signup")}>Yeni hesap oluştur</button><button className="keySecondary" disabled={busy || !email} onClick={() => void resetPassword()}>Şifremi unuttum</button></div>
-        <p className="keyFootnote">Hesabın yoksa yeni hesap oluştur. E-posta doğrulaması istenebilir.</p>
+        <div className="keyPanelTitle"><div className="keyIcon"><LogIn size={19}/></div><div><b>{setupToken ? "Yönetici şifreni oluştur" : "Yönetici girişi"}</b><small>{setupToken ? "Bu işlem yalnızca bir kez yapılır" : "Yalnızca tek yönetici hesabı bulunur"}</small></div></div>
+        <label className="keyLabel" htmlFor="adminPassword">{setupToken ? "YÖNETİCİ ŞİFRESİ" : "YÖNETİCİ ŞİFREN"}</label>
+        <input id="adminPassword" className="keyInput" type="password" autoComplete={setupToken ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="En az 12 karakter" />
+        {setupToken && <>
+          <label className="keyLabel" htmlFor="confirmAdminPassword" style={{marginTop:16}}>ŞİFREYİ TEKRAR YAZ</label>
+          <input id="confirmAdminPassword" className="keyInput" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Şifreni tekrar gir" />
+        </>}
+        <button className="keyCreate" disabled={busy || password.length < 12 || (setupToken && confirmPassword.length < 12)} onClick={() => void authenticate(setupToken ? "setup" : "login")}>
+          <LogIn size={17}/>{busy ? "Kontrol ediliyor..." : setupToken ? "Yönetici şifresini oluştur" : "Giriş yap"}
+        </button>
+        <p className="keyFootnote">Şifren Supabase Auth tarafından güvenli biçimde saklanır. E-posta veya kullanıcı adı gerekmez.</p>
       </section> :
       <section className="keyLayout">
         <div className="keyPanel">
@@ -182,14 +172,14 @@ export default function ApiKeysPage() {
           <p className="keyFootnote">Gizli anahtar yalnızca oluşturulduğunda gösterilir. Güvenli bir yere kaydet.</p>
         </div>
         <div className="keyPanel keyListPanel">
-          <div className="keyPanelTitle"><div className="keyIcon"><ShieldCheck size={19}/></div><div><b>API anahtarların</b><small>{keys.length} kayıtlı anahtar</small></div><button className="keyLogout" onClick={async () => { await supabase.auth.signOut(); setKeys([]); setUser(null); }}> <LogOut size={15}/> Çıkış</button></div>
+          <div className="keyPanelTitle"><div className="keyIcon"><ShieldCheck size={19}/></div><div><b>API anahtarların</b><small>{keys.length} kayıtlı anahtar</small></div><button className="keyLogout" onClick={async () => { await supabase.auth.signOut(); setKeys([]); setUser(null); }}><LogOut size={15}/> Çıkış</button></div>
           {keys.length === 0 ? <div className="keyEmpty"><KeyRound size={28}/><b>Henüz anahtar yok</b><span>İlk API anahtarını oluşturduğunda burada görünecek.</span></div> :
             <div className="keyList">{keys.map(key => <div className="keyRow" key={key.id}><div className="keyRowIcon"><KeyRound size={16}/></div><div className="keyRowText"><b>{key.name}</b><code>{key.key_prefix}••••••••••</code><small>{new Date(key.created_at).toLocaleString("tr-TR")} {key.last_used_at ? " · Son kullanım: " + new Date(key.last_used_at).toLocaleString("tr-TR") : ""}</small><small className={key.revoked_at ? "keyRevoked" : "keyActive"}>{key.revoked_at ? "İptal edildi" : "Aktif"}</small></div>{!key.revoked_at && <button className="keyDelete" onClick={() => void revokeKey(key.id)} aria-label="Anahtarı iptal et"><Trash2 size={16}/></button>}</div>)}</div>}
         </div>
       </section>}
       {notice && <div className="keyNotice keyGlobalNotice">{notice}</div>}
       {newSecret && <div className="keyModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="secretTitle"><div className="keySecretModal"><div className="keySuccess"><Check size={22}/></div><h2 id="secretTitle">Anahtarın hazır!</h2><p>Bu gizli anahtar daha sonra tekrar gösterilmeyecek. Şimdi kopyalayıp güvenli bir yere kaydet.</p><code className="keySecret">{newSecret}</code><button className="keyCreate" onClick={() => void copy(newSecret)}><Copy size={17}/> Anahtarı kopyala</button><button className="keyClose" onClick={() => setNewSecret("")}>Kaydettim, kapat</button></div></div>}
-      <footer className="keyFooter">Ay Zek API · Hesap koruması ve anahtar doğrulama Supabase ile sağlanır.</footer>
+      <footer className="keyFooter">Ay Zek API · Tek yönetici hesabı ve güvenli anahtar yönetimi.</footer>
     </main>
   );
 }
