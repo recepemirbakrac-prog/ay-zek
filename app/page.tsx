@@ -14,7 +14,8 @@ const tools = [
   { title: "Kodlama yardımcısı", desc: "Kod yaz, açıkla ve hataları çöz.", icon: BrainCircuit, href: "/chat?prompt=Bir%20yaz%C4%B1l%C4%B1m%20uzman%C4%B1%20gibi%20bana%20yard%C4%B1m%20et.", tag: "Geliştirici", tone: "green" },
   { title: "Yaratıcı fikirler", desc: "Şarkı, hikâye, slogan ve içerik üret.", icon: Music2, href: "/chat?prompt=Bana%20yarat%C4%B1c%C4%B1%20bir%20fikir%20%C3%BCret.", tag: "Yaratıcılık", tone: "pink" },
   { title: "Araştırma asistanı", desc: "Bir konuyu adım adım incele ve açıkla.", icon: Search, href: "/chat?prompt=Bir%20ara%C5%9Ft%C4%B1rma%20asistan%C4%B1%20gibi%20%C3%A7al%C4%B1%C5%9F.", tag: "Keşfet", tone: "cyan" },
-  { title: "Uygulama mağazası", desc: "Android ve Windows için resmî indirme bağlantılarını keşfet.", icon: Download, href: "/indir", tag: "Mağaza", tone: "blue" },\n  { title: "Uzay Savaşı", desc: "Gemini yönet, düşmanları vur ve rekorunu kır.", icon: Gamepad2, href: "/uzay", tag: "Oyun", tone: "cyan" }
+  { title: "Uygulama mağazası", desc: "Android ve Windows için resmî indirme bağlantılarını keşfet.", icon: Download, href: "/indir", tag: "Mağaza", tone: "blue" },
+  { title: "Uzay Savaşı", desc: "Gemini yönet, düşmanları vur ve rekorunu kır.", icon: Gamepad2, href: "/uzay", tag: "Oyun", tone: "cyan" }
 ];
 
 export default function Home() {
