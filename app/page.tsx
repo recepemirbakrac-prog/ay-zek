@@ -3,12 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, BrainCircuit, Download, FileText, ImagePlus, MessageCircle,
+  ArrowRight, BrainCircuit, Code2, Download, FileText, ImagePlus, MessageCircle,
   Music2, Search, Sparkles, ShieldCheck
 } from "lucide-react";
 import "./home.css";
 
 const tools = [
+  { title: "Uygulama oluşturucu", desc: "Fikrini anlat, yapay zekâ çalışan web uygulaması oluştursun.", icon: Code2, href: "/builder", tag: "Yeni", tone: "violet" },
   { title: "Akıllı sohbet", desc: "Sorular sor, fikir al, konuları öğren.", icon: MessageCircle, href: "/chat", tag: "En popüler", tone: "violet" },
   { title: "Yazı ve belge", desc: "Metin, özet, e-posta ve sunum hazırla.", icon: FileText, href: "/chat?prompt=Benim%20i%C3%A7in%20profesyonel%20bir%20belge%20haz%C4%B1rla.", tag: "Üretkenlik", tone: "orange" },
   { title: "Kodlama yardımcısı", desc: "Kod yaz, açıkla ve hataları çöz.", icon: BrainCircuit, href: "/chat?prompt=Bir%20yaz%C4%B1l%C4%B1m%20uzman%C4%B1%20gibi%20bana%20yard%C4%B1m%20et.", tag: "Geliştirici", tone: "green" },
