@@ -7,7 +7,8 @@ export default function SpaceGame(){
  const canvas=useRef<HTMLCanvasElement>(null);
  const keys=useRef({left:false,right:false,fire:false});
  const [score,setScore]=useState(0),[lives,setLives]=useState(3),[level,setLevel]=useState(1),[playing,setPlaying]=useState(false),[over,setOver]=useState(false),[best,setBest]=useState(0);
- const reset=useRef<()=>void>(()=>{});\n const bestRef=useRef(0);
+ const reset=useRef<()=>void>(()=>{});
+ const bestRef=useRef(0);
  useEffect(()=>{
   const el=canvas.current,ctx=el?.getContext("2d");if(!el||!ctx)return;
   let w=900,h=560,ship=450,shots:Shot[]=[],enemies:Enemy[]=[],stars=Array.from({length:100},()=>({x:Math.random()*w,y:Math.random()*h,s:20+Math.random()*70})),points=0,hp=3,lvl=1,active=false,last=0,spawn=0,cool=0,raf=0;
