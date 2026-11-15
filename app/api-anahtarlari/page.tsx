@@ -40,7 +40,7 @@ export default function ApiKeysPage() {
     const token = new URLSearchParams(window.location.search).get("setup") ?? "";
     setSetupToken(token);
     if (!supabase) return;
-    void supabase.auth.getSession().then(({ data, error }) => {
+    void supabase.auth.getSession().then(async ({ data, error }) => {
       if (error) setNotice("Oturum kontrol edilemedi. Sayfayı yenileyip tekrar dene.");
       const current = data.session?.user;
       if (current?.app_metadata?.role === "ayzek_admin") setUser({ id: current.id });
