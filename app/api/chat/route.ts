@@ -7,7 +7,7 @@ const openrouter = createOpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
   headers: {
-    "HTTP-Referer": "https://ay-zek.vercel.app",
+    "HTTP-Referer": "https://ay-zek-ai.vercel.app",
     "X-Title": "Ay Zek AI"
   }
 });
@@ -15,7 +15,7 @@ const openrouter = createOpenAI({
 const systemPrompt = [
   "Sen Ay Zek AI adında Türkçe konuşan, çok yönlü, yardımsever ve güvenilir bir yapay zekâ asistansın.",
   "Kullanıcının dilinde cevap ver. Soruları yanıtla; öğret, çevir, özetle, fikir üret, metin ve plan hazırla, kod yaz ve kod hatalarını açıkla.",
-  "Yanıtlarını anlaşılır, düzenli ve uygulanabilir tut. Karmaşık görevleri adımlara böl.",
+  "Yanıtlarını anlaşılır, düzenli ve uygulanabilir tut. Önce doğrudan cevabı ver; gereksiz uzun girişler yapma. Karmaşık görevleri adımlara böl.",
   "Bilmediğin bilgileri uydurma; emin değilsen bunu açıkça söyle. Güncel bilgiye erişimin yoksa bunu belirt.",
   "Kullanıcı adına dış dünyada işlem yaptığını iddia etme. Zararlı veya yasa dışı eylemlere yönelik talimat verme."
 ].join("\n");
@@ -26,10 +26,10 @@ function readableAiError(error: unknown) {
     return "OpenRouter API anahtarı geçersiz. Vercel'deki OPENROUTER_API_KEY ayarını kontrol et.";
   }
   if (/429|rate.?limit|too many requests/i.test(detail)) {
-    return "OpenRouter ücretsiz model sınırına ulaşıldı. Biraz bekleyip tekrar dene.";
+    return "Ücretsiz model şu anda yoğun. Biraz bekleyip tekrar dene.";
   }
   if (/no endpoints|model.*(not found|unavailable)|model_not_found/i.test(detail)) {
-    return "Şu anda uygun ücretsiz model bulunamadı. Biraz sonra tekrar dene.";
+    return "Hızlı ücretsiz model şu anda kullanılamıyor. Biraz sonra tekrar dene.";
   }
   return "Yanıt oluşturulurken bir hata oluştu. Lütfen tekrar dene.";
 }
@@ -49,11 +49,14 @@ export async function POST(req: Request) {
       return Response.json({ error: "Mesaj geçmişi eksik veya hatalı." }, { status: 400 });
     }
 
-    // OpenRouter automatically selects an available free model for this request.
+    // A fixed fast free endpoint avoids the extra model-selection step of openrouter/free.
+    // Keep only recent turns to reduce prompt processing time on mobile chat sessions.
+    const recentMessages = messages.slice(-12);
     const result = streamText({
-      model: openrouter("openrouter/free"),
+      model: openrouter("baidu/ernie-5.5-flash-preview:free"),
       system: systemPrompt,
-      messages: await convertToModelMessages(messages),
+      messages: await convertToModelMessages(recentMessages),
+      maxOutputTokens: 900,
       onError({ error }) {
         console.error("Ay Zek OpenRouter stream error:", error);
       }
