@@ -34,8 +34,40 @@ function readableAiError(error: unknown) {
   return "Yanıt oluşturulurken bir hata oluştu. Lütfen tekrar dene.";
 }
 
+// Lightweight per-instance protection against rapid repeated requests.
+// Vercel's paid IP-keyed WAF rate limiting is not enabled on this project plan.
+const requestWindows = new Map<string, { count: number; resetAt: number }>();
+const WINDOW_MS = 60_000;
+const MAX_REQUESTS_PER_WINDOW = 20;
+
+function isRateLimited(ip: string) {
+  const now = Date.now();
+  const current = requestWindows.get(ip);
+  if (!current || current.resetAt <= now) {
+    requestWindows.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+  current.count += 1;
+  return current.count > MAX_REQUESTS_PER_WINDOW;
+}
+
 export async function POST(req: Request) {
   try {
+    const forwardedFor = req.headers.get("x-forwarded-for");
+    const clientIp = (forwardedFor?.split(",")[0] || req.headers.get("x-real-ip") || "unknown").trim();
+
+    if (isRateLimited(clientIp)) {
+      return Response.json(
+        { error: "Çok fazla istek gönderdin. Lütfen bir dakika bekleyip tekrar dene." },
+        { status: 429, headers: { "Retry-After": "60", "Cache-Control": "no-store" } }
+      );
+    }
+
+    const contentLength = Number(req.headers.get("content-length") || 0);
+    if (contentLength > 64 * 1024) {
+      return Response.json({ error: "Mesaj çok büyük. Daha kısa bir mesaj gönder." }, { status: 413 });
+    }
+
     if (!process.env.OPENROUTER_API_KEY) {
       return Response.json(
         { error: "OpenRouter anahtarı henüz ayarlanmamış. Vercel'de OPENROUTER_API_KEY değişkenini kontrol et." },
@@ -45,12 +77,22 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const messages = body?.messages as UIMessage[] | undefined;
-    if (!Array.isArray(messages)) {
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 100) {
       return Response.json({ error: "Mesaj geçmişi eksik veya hatalı." }, { status: 400 });
     }
 
-    // A fixed fast free endpoint avoids the extra model-selection step of openrouter/free.
-    // Keep only recent turns to reduce prompt processing time on mobile chat sessions.
+    const textLength = messages.reduce((total, message) => {
+      if (!Array.isArray(message.parts)) return total;
+      return total + message.parts.reduce((sum, part) => {
+        return sum + (part.type === "text" && typeof part.text === "string" ? part.text.length : 0);
+      }, 0);
+    }, 0);
+
+    if (textLength > 12_000) {
+      return Response.json({ error: "Sohbet metni çok uzun. Lütfen daha kısa bir mesaj gönder." }, { status: 413 });
+    }
+
+    // Use only the latest turns to keep prompts small and response times low.
     const recentMessages = messages.slice(-12);
     const result = streamText({
       model: openrouter("baidu/ernie-5.5-flash-preview:free"),
