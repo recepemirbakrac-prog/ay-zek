@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       model: openrouter("openrouter/free"),
       temperature: 0.4,
       maxOutputTokens: 7000,
+      abortSignal: AbortSignal.timeout(50000),
       system: [
         "You are Ay Zek, an expert web application builder.",
         "Create a complete, polished, responsive single-file HTML application from the user's description.",
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
     const message = error instanceof Error ? error.message : "";
     if (/401|403|api.?key|unauthorized/i.test(message)) return Response.json({ error: "OpenRouter anahtarı geçersiz veya yetkisiz. Vercel'deki OPENROUTER_API_KEY ayarını kontrol et." }, { status: 502 });
     if (/429|rate.?limit/i.test(message)) return Response.json({ error: "Ücretsiz modelin istek sınırına ulaşıldı. Biraz sonra tekrar dene." }, { status: 429 });
+    if (/abort|timeout|timed out/i.test(message)) return Response.json({ error: "Yapay zekâ yanıtı zamanında gelmedi. Ücretsiz model yoğun olabilir; tekrar dene." }, { status: 504 });
     return Response.json({ error: "Uygulama oluşturulurken bir hata oluştu. Lütfen tekrar dene." }, { status: 500 });
   }
 }
