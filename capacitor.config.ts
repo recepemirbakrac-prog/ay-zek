@@ -1,6 +1,4 @@
-import type { CapacitorConfig } from "@capacitor/cli";
-
-const config: CapacitorConfig = {
+const config = {
   appId: "com.ayzek.app",
   appName: "Ay Zek",
   webDir: "public/capacitor-shell",
