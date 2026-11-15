@@ -23,14 +23,15 @@ export default function BuilderPage() {
       const response = await fetch("/api/builder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim() })
+        body: JSON.stringify({ prompt: prompt.trim() }),
+        signal: AbortSignal.timeout(55000)
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Uygulama oluşturulamadı.");
       setCode(data.code);
       setExplanation(data.explanation || "İlk sürüm hazır. İsteğini değiştirerek yeniden oluşturabilirsin.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bir hata oluştu.");
+      setError(err instanceof DOMException && err.name === "TimeoutError" ? "İstek zaman aşımına uğradı. Ücretsiz model yoğun olabilir; lütfen tekrar dene." : err instanceof Error ? err.message : "Bir hata oluştu.");
     } finally { setLoading(false); }
   }
 
