@@ -9,7 +9,7 @@ import "./api-keys.css";
 type SavedKey = { id: string; name: string; key_prefix: string; created_at: string; last_used_at: string | null; revoked_at: string | null };
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase: SupabaseClient | null = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const supabase: SupabaseClient | null = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey, { auth: { storageKey: "ayzek-admin-auth" } }) : null;
 
 function makeKey() {
   const bytes = new Uint8Array(32);
@@ -43,12 +43,13 @@ export default function ApiKeysPage() {
     void supabase.auth.getSession().then(({ data, error }) => {
       if (error) setNotice("Oturum kontrol edilemedi. Sayfayı yenileyip tekrar dene.");
       const current = data.session?.user;
-      setUser(current ? { id: current.id } : null);
+      if (current?.app_metadata?.role === "ayzek_admin") setUser({ id: current.id });
+      else { if (current) await supabase.auth.signOut(); setUser(null); }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const current = session?.user;
-      setUser(current ? { id: current.id } : null);
-      if (!current) setKeys([]);
+      if (current?.app_metadata?.role === "ayzek_admin") setUser({ id: current.id });
+      else { setUser(null); setKeys([]); if (current) void supabase.auth.signOut(); }
     });
     return () => subscription.unsubscribe();
   }, []);
