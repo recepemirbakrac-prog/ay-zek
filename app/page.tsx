@@ -18,7 +18,7 @@ const tools = [
   { title: "Yıldız Koşusu", desc: "Yıldızları topla, göktaşlarından kaç ve rekorunu kır.", icon: Sparkles, href: "/yildiz-kosusu", tag: "Yeni oyun", tone: "cyan" },
   { title: "Virüs Avcısı Oyunu", desc: "Sanal virüslerden kaç, panzehirleri topla ve ağı kurtar.", icon: ShieldCheck, href: "/virus-game", tag: "Oyun", tone: "green" },
   { title: "Virüs Simülatörü", desc: "Virüslerin sanal cihazlarda nasıl yayıldığını keşfet.", icon: ShieldCheck, href: "/virus-simulator", tag: "Eğitim", tone: "cyan" },
-  { title: "Uygulama mağazası", desc: "Android ve Windows için resmî indirme bağlantılarını keşfet.", icon: Download, href: "/indir", tag: "Mağaza", tone: "blue" }
+  { title: "Ay Zek Mağaza", desc: "Uygulamaları keşfet ve bilgisayarına yükle.", icon: Download, href: "/magaza", tag: "Mağaza", tone: "blue" }
 ];
 
 export default function Home() {
@@ -32,7 +32,7 @@ export default function Home() {
     <main className="homeShell">
       <header className="homeNav">
         <Link href="/" className="brandMark"><span className="brandIcon"><Sparkles size={21}/></span><span>Ay Zek<span className="brandAI"> AI</span></span></Link>
-        <nav><Link href="/chat">Sohbet</Link><Link href="/indir">Uygulamalar</Link><a href="#araclar">Araçlar</a><Link href="/api-anahtarlari">API Anahtarları</Link></nav>
+        <nav><Link href="/chat">Sohbet</Link><Link href="/magaza">Mağaza</Link><a href="#araclar">Araçlar</a><Link href="/api-anahtarlari">API Anahtarları</Link></nav>
         <Link className="navCta" href="/chat">Başla <ArrowRight size={16}/></Link>
       </header>
 
