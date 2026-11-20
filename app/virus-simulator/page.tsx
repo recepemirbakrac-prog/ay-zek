@@ -36,24 +36,22 @@ export default function VirusSimulatorPage() {
 
   useEffect(() => {
     if (!running) return;
-    const timer = window.setInterval(() => {
-      setDevices((current) => {
-        const candidates = current.filter((d) => d.status === "safe");
-        if (!candidates.length) {
-          setRunning(false);
-          return current;
-        }
-        const infectedNow = current.filter((d) => d.status === "infected").length;
-        const spreadCount = Math.min(candidates.length, Math.max(1, Math.ceil(infectedNow / 3)));
-        const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-        const newlyInfected = new Set(shuffled.slice(0, spreadCount).map((d) => d.id));
-        setLog((old) => [`Tur ${tick + 1}: ${newlyInfected.size} sanal cihaz etkilendi.`, ...old].slice(0, 5));
-        setTick((n) => n + 1);
-        return current.map((d) => newlyInfected.has(d.id) ? { ...d, status: "infected" } : d);
-      });
+    const timer = window.setTimeout(() => {
+      const candidates = devices.filter((d) => d.status === "safe");
+      if (!candidates.length) {
+        setRunning(false);
+        return;
+      }
+      const infectedNow = devices.filter((d) => d.status === "infected").length;
+      const spreadCount = Math.min(candidates.length, Math.max(1, Math.ceil(infectedNow / 3)));
+      const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+      const newlyInfected = new Set(shuffled.slice(0, spreadCount).map((d) => d.id));
+      setDevices(devices.map((d) => newlyInfected.has(d.id) ? { ...d, status: "infected" } : d));
+      setLog((old) => [`Tur ${tick + 1}: ${newlyInfected.size} sanal cihaz etkilendi.`, ...old].slice(0, 5));
+      setTick(tick + 1);
     }, 1300);
-    return () => window.clearInterval(timer);
-  }, [running, tick]);
+    return () => window.clearTimeout(timer);
+  }, [running, devices, tick]);
 
   const reset = () => {
     setRunning(false);
