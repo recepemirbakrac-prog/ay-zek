@@ -42,8 +42,8 @@ export default function SurvivalGame() {
   },8000);return()=>window.clearInterval(id);},[started,ended,night,fire,shelter,hunger,thirst,x,z]);
 
   const stats=[{icon:"❤️",value:health,color:"#f05b69"},{icon:"🍖",value:hunger,color:"#e6b94e"},{icon:"💧",value:thirst,color:"#49c9e9"}];
-  return <main className="survival">
-    <style jsx>{[
+  const styles = [
+      "*{box-sizin    <style jsx>{styles}</style>tyle jsx>{[
       "*{box-sizing:border-box}.survival{height:100svh;min-height:600px;overflow:hidden;position:relative;color:white;font-family:Arial,sans-serif;background:#1d2b24;isolation:isolate}",
       ".scene{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#8999ad 0%,#b4ad9d 35%,#657653 57%,#333d2b 100%)}.scene.night{filter:brightness(.34) saturate(.75) hue-rotate(15deg)}",
       ".skyglow{position:absolute;top:-17%;left:18%;width:42vw;height:42vw;border-radius:50%;background:radial-gradient(circle,#fff6d9,transparent 70%);filter:blur(12px)}.mist{position:absolute;inset:25% -10% 24%;background:linear-gradient(90deg,transparent,#d6d2c477,transparent 48%,#d9d2bf66,transparent);filter:blur(22px)}",
