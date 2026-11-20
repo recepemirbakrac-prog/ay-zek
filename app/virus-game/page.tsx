@@ -37,19 +37,20 @@ export default function VirusGamePage() {
 
   const move = useCallback((dx: number, dy: number) => {
     if (!active || over) return;
-    setPlayer((old) => {
-      const next = { x: Math.max(0, Math.min(W - 1, old.x + dx)), y: Math.max(0, Math.min(H - 1, old.y + dy)) };
-      if (viruses.some((v) => same(v, next))) {
-        setLives((n) => { if (n <= 1) { setOver(true); setActive(false); return 0; } return n - 1; });
-        return startPlayer;
-      }
-      if (same(serum, next)) {
-        setScore((n) => n + 10);
-        setSerum(randomPoint([...viruses, next]));
-      }
-      return next;
-    });
-  }, [active, over, serum, viruses]);
+    const next = { x: Math.max(0, Math.min(W - 1, player.x + dx)), y: Math.max(0, Math.min(H - 1, player.y + dy)) };
+    if (viruses.some((v) => same(v, next))) {
+      const remaining = lives - 1;
+      setLives(remaining);
+      if (remaining <= 0) { setOver(true); setActive(false); }
+      setPlayer(startPlayer);
+      return;
+    }
+    if (same(serum, next)) {
+      setScore((n) => n + 10);
+      setSerum(randomPoint([...viruses, next]));
+    }
+    setPlayer(next);
+  }, [active, over, player, serum, viruses, lives]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -64,24 +65,24 @@ export default function VirusGamePage() {
   useEffect(() => {
     if (!active || over) return;
     const timer = window.setInterval(() => {
-      setViruses((old) => {
-        const moved = old.map((v) => {
-          const dx = player.x === v.x ? 0 : player.x > v.x ? 1 : -1;
-          const dy = player.y === v.y ? 0 : player.y > v.y ? 1 : -1;
-          const choices = Math.random() > .45 ? [{x:v.x+dx,y:v.y},{x:v.x,y:v.y+dy}] : [{x:v.x,y:v.y+dy},{x:v.x+dx,y:v.y}];
-          const next = choices.find((p) => p.x >= 0 && p.x < W && p.y >= 0 && p.y < H) || v;
-          return next;
-        });
-        if (moved.some((v) => same(v, player))) {
-          setLives((n) => { if (n <= 1) { setOver(true); setActive(false); return 0; } return n - 1; });
-          return startVirus;
-        }
-        return moved;
+      const moved = viruses.map((v) => {
+        const dx = player.x === v.x ? 0 : player.x > v.x ? 1 : -1;
+        const dy = player.y === v.y ? 0 : player.y > v.y ? 1 : -1;
+        const choices = Math.random() > .45 ? [{x:v.x+dx,y:v.y},{x:v.x,y:v.y+dy}] : [{x:v.x,y:v.y+dy},{x:v.x+dx,y:v.y}];
+        return choices.find((p) => p.x >= 0 && p.x < W && p.y >= 0 && p.y < H) || v;
       });
+      if (moved.some((v) => same(v, player))) {
+        const remaining = lives - 1;
+        setLives(remaining);
+        if (remaining <= 0) { setOver(true); setActive(false); }
+        setViruses(startVirus);
+      } else {
+        setViruses(moved);
+      }
       setLevel((n) => Math.min(5, 1 + Math.floor(score / 50)));
     }, Math.max(350, 950 - level * 100));
     return () => window.clearInterval(timer);
-  }, [active, over, player, level, score]);
+  }, [active, over, player, viruses, lives, level, score]);
 
   const cells = Array.from({ length: W * H }, (_, i) => ({ x: i % W, y: Math.floor(i / W) }));
   return (
