@@ -7,10 +7,10 @@ export default function OyunPage() {
   const g = useRef({ lane: 1, items: [] as Item[], tick: 0, score: 0, speed: 4, live: false, last: 0, raf: 0 });
   const [state, setState] = useState<"ready" | "playing" | "over">("ready");
   const [score, setScore] = useState(0);
-  const [best, setBest] = useState(0);
+  const [best, setBest] = useState(0);\n  const shownScore = useRef(-1);
   useEffect(() => { setBest(Number(localStorage.getItem("ay-neon-best") || 0)); }, []);
   const move = useCallback((d: number) => { if (g.current.live) g.current.lane = Math.max(0, Math.min(2, g.current.lane + d)); }, []);
-  const start = useCallback(() => { Object.assign(g.current, { lane: 1, items: [], tick: 0, score: 0, speed: 4, live: true, last: 0 }); setScore(0); setState("playing"); }, []);
+  const start = useCallback(() => { Object.assign(g.current, { lane: 1, items: [], tick: 0, score: 0, speed: 4, live: true, last: 0 }); setScore(0); shownScore.current = 0; setState("playing"); }, []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (["ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
@@ -39,7 +39,7 @@ export default function OyunPage() {
         if(a.tick%Math.max(21,55-a.speed*2)<dt)a.items.push({lane:Math.floor(Math.random()*3),y:horizon-35,kind:Math.random()<.27?"orb":"rock"});
         a.items.forEach(o=>o.y+=a.speed*dt*(.8+Math.max(0,o.y-horizon)/(h-horizon)*.55));
         for(const o of a.items){if(Math.abs(o.y-h*.78)<24&&o.lane===a.lane){if(o.kind==="rock"){a.live=false;setState("over");const n=Math.floor(a.score);setScore(n);setBest(b=>{const v=Math.max(b,n);localStorage.setItem("ay-neon-best",String(v));return v;});}else{o.y=h+100;a.score+=15;}}}
-        a.items=a.items.filter(o=>o.y<h+60);setScore(Math.floor(a.score));
+        a.items=a.items.filter(o=>o.y<h+60);const shown=Math.floor(a.score);if(shown!==shownScore.current){shownScore.current=shown;setScore(shown);}
       }
       for(const o of a.items){const p=Math.max(.05,(o.y-horizon)/(h-horizon)),x=left+lane*(o.lane+.5),s=18+p*36;ctx.save();ctx.translate(x,o.y);
         if(o.kind==="orb"){ctx.shadowColor="#ffd45a";ctx.shadowBlur=22;ctx.fillStyle="#ffd45a";ctx.beginPath();ctx.ellipse(0,0,s*.45,s*.62,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#fff2a8";ctx.lineWidth=3;ctx.stroke();}
