@@ -16,6 +16,7 @@ const tools = [
   { title: "Yaratıcı fikirler", desc: "Şarkı, hikâye, slogan ve içerik üret.", icon: Music2, href: "/chat?prompt=Bana%20yarat%C4%B1c%C4%B1%20bir%20fikir%20%C3%BCret.", tag: "Yaratıcılık", tone: "pink" },
   { title: "Araştırma asistanı", desc: "Bir konuyu adım adım incele ve açıkla.", icon: Search, href: "/chat?prompt=Bir%20ara%C5%9Ft%C4%B1rma%20asistan%C4%B1%20gibi%20%C3%A7al%C4%B1%C5%9F.", tag: "Keşfet", tone: "cyan" },
   { title: "Yıldız Koşusu", desc: "Yıldızları topla, göktaşlarından kaç ve rekorunu kır.", icon: Sparkles, href: "/yildiz-kosusu", tag: "Yeni oyun", tone: "cyan" },
+  { title: "Ormanda Hayatta Kal", desc: "Kaynakları topla, zombi tehlikesine karşı hazırlan ve üç gece dayan.", icon: ShieldCheck, href: "/hayatta-kalma-site", tag: "3D hayatta kalma", tone: "green" },
   { title: "Virüs Avcısı Oyunu", desc: "Sanal virüslerden kaç, panzehirleri topla ve ağı kurtar.", icon: ShieldCheck, href: "/virus-game", tag: "Oyun", tone: "green" },
   { title: "Virüs Simülatörü", desc: "Virüslerin sanal cihazlarda nasıl yayıldığını keşfet.", icon: ShieldCheck, href: "/virus-simulator", tag: "Eğitim", tone: "cyan" },
   { title: "Ay Zek Mağaza", desc: "Uygulamaları keşfet ve bilgisayarına yükle.", icon: Download, href: "/magaza", tag: "Mağaza", tone: "blue" }
