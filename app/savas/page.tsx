@@ -22,12 +22,21 @@ export default function WarGame(){
     const resize=()=>{const r=c.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);w=r.width;h=r.height;c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(!game.current.x){game.current.x=w/2;game.current.y=h/2;}};resize();window.addEventListener("resize",resize);
     const soldier=(s:Soldier)=>{ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.sin(s.phase)*.07);ctx.fillStyle="#b94f3f";ctx.fillRect(-7,-8,14,17);ctx.fillStyle="#d6ad82";ctx.beginPath();ctx.arc(0,-11,6,0,Math.PI*2);ctx.fill();ctx.fillStyle="#343b36";ctx.fillRect(-9,3,6,10);ctx.fillRect(3,3,6,10);ctx.fillStyle="#222c29";ctx.fillRect(4,-3,14,4);ctx.restore();};
     const loop=(t:number)=>{const dt=Math.min((t-last)/16.67||1,2);last=t;frame++;ctx.clearRect(0,0,w,h);
-      ctx.fillStyle="#68745b";ctx.fillRect(0,0,w,h);
-      // dusty battlefield terrain
-      for(let i=0;i<90;i++){const x=(i*137+37)%w,y=(i*83+19)%h;ctx.fillStyle=i%3===0?"#89916b33":"#313e2d22";ctx.beginPath();ctx.arc(x,y,(i%4)+1,0,7);ctx.fill();}
-      ctx.strokeStyle="#d5d0a01b";ctx.lineWidth=1;for(let x=0;x<w;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
-      // sandbag cover
-      for(const [x,y] of [[w*.2,h*.25],[w*.78,h*.68],[w*.68,h*.2],[w*.25,h*.76]] as number[][]){ctx.fillStyle="#786b4b";ctx.fillRect(x-28,y-9,56,18);ctx.strokeStyle="#b7a57b";ctx.strokeRect(x-28,y-9,56,18);ctx.beginPath();ctx.moveTo(x-8,y-9);ctx.lineTo(x-8,y+9);ctx.moveTo(x+10,y-9);ctx.lineTo(x+10,y+9);ctx.stroke();}
+      // layered battlefield ground
+      const ground=ctx.createLinearGradient(0,0,w,h);ground.addColorStop(0,"#788365");ground.addColorStop(.48,"#59694d");ground.addColorStop(1,"#394b3b");ctx.fillStyle=ground;ctx.fillRect(0,0,w,h);
+      for(let i=0;i<210;i++){const x=(i*137+37)%w,y=(i*83+19)%h;ctx.fillStyle=i%4===0?"#c2b78320":i%3===0?"#202f2528":"#e0d5a012";ctx.beginPath();ctx.ellipse(x,y,(i%5)+2,(i%3)+1,(i%7)*.3,0,Math.PI*2);ctx.fill();}
+      // winding dirt road
+      ctx.beginPath();ctx.moveTo(w*.05,h*.92);ctx.bezierCurveTo(w*.28,h*.72,w*.38,h*.52,w*.58,h*.47);ctx.bezierCurveTo(w*.78,h*.42,w*.76,h*.18,w*.98,h*.05);ctx.strokeStyle="#b7a47a55";ctx.lineWidth=43;ctx.stroke();ctx.strokeStyle="#d5c49a35";ctx.lineWidth=2;ctx.setLineDash([13,16]);ctx.stroke();ctx.setLineDash([]);
+      // subtle tactical grid
+      ctx.strokeStyle="#e3dfb20d";ctx.lineWidth=1;for(let x=0;x<w;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+      // forest clusters
+      for(let i=0;i<22;i++){const x=(i*173+61)%w,y=(i*109+31)%h;if(Math.hypot(x-w*.5,y-h*.5)<70)continue;ctx.fillStyle="#17291f55";ctx.beginPath();ctx.ellipse(x+4,y+7,15,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=i%2?"#263f2c":"#345239";ctx.beginPath();ctx.arc(x,y,12+(i%4)*2,0,Math.PI*2);ctx.fill();ctx.fillStyle="#71815a88";ctx.beginPath();ctx.arc(x-4,y-5,5,0,Math.PI*2);ctx.fill();}
+      // ruined outpost buildings
+      for(const [x,y,bw,bh] of [[w*.08,h*.18,64,42],[w*.82,h*.12,74,48],[w*.82,h*.78,58,40]] as number[][]){ctx.fillStyle="#1b2922aa";ctx.fillRect(x+5,y+7,bw,bh);ctx.fillStyle="#817c66";ctx.fillRect(x,y,bw,bh);ctx.fillStyle="#a59b7c";ctx.fillRect(x-3,y-5,bw+6,8);ctx.fillStyle="#414b40";ctx.fillRect(x+10,y+12,15,17);ctx.fillRect(x+bw-25,y+12,15,17);ctx.fillStyle="#303a32";ctx.fillRect(x+bw/2-5,y+bh-16,12,16);ctx.strokeStyle="#c5b99566";ctx.strokeRect(x,y,bw,bh);}
+      // shell craters
+      for(let i=0;i<9;i++){const x=(i*211+93)%w,y=(i*127+73)%h;ctx.fillStyle="#26352d55";ctx.beginPath();ctx.ellipse(x,y,11,6,.3,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#b0a17a55";ctx.stroke();}
+      // sandbag defensive positions
+      for(const [x,y] of [[w*.2,h*.25],[w*.78,h*.68],[w*.68,h*.2],[w*.25,h*.76]] as number[][]){ctx.fillStyle="#26352d88";ctx.fillRect(x-30,y-5,62,22);for(let j=0;j<4;j++){ctx.fillStyle=j%2?"#a09168":"#c0ad7e";ctx.beginPath();ctx.roundRect(x-27+j*14,y-10,14,12,4);ctx.fill();ctx.strokeStyle="#675e43";ctx.stroke();}ctx.fillStyle="#716747";ctx.fillRect(x-28,y+5,56,5);}
       const g=game.current;
       if(running&&!paused&&!g.over){const k=keys.current;let dx=0,dy=0;if(k.w||k.arrowup)dy--;if(k.s||k.arrowdown)dy++;if(k.a||k.arrowleft)dx--;if(k.d||k.arrowright)dx++;const n=Math.hypot(dx,dy)||1;g.x=clamp(g.x+dx/n*3.7*dt,15,w-15);g.y=clamp(g.y+dy/n*3.7*dt,15,h-15);
         g.spawn-=dt;g.fire-=dt;if(g.spawn<=0){const edge=Math.floor(Math.random()*4);g.enemies.push({x:edge===0?-15:edge===1?w+15:Math.random()*w,y:edge===2?-15:edge===3?h+15:Math.random()*h,hp:2,speed:.48+Math.random()*.25+g.wave*.025,phase:Math.random()*8});g.spawn=Math.max(17,62-g.wave*3);}
@@ -39,9 +48,9 @@ export default function WarGame(){
         if(frame%6===0){setHp(Math.ceil(g.hp));setScore(g.score);setKills(g.kills);setWave(g.wave);}
       }
       g.enemies.forEach(soldier);
-      g.shots.forEach(b=>{ctx.fillStyle="#ffd37a";ctx.shadowBlur=9;ctx.shadowColor="#ffcf70";ctx.beginPath();ctx.arc(b.x,b.y,3,0,7);ctx.fill();ctx.shadowBlur=0;});
+      g.shots.forEach(b=>{ctx.fillStyle="#fff0b1";ctx.shadowBlur=14;ctx.shadowColor="#ffb84d";ctx.beginPath();ctx.arc(b.x,b.y,3,0,7);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle="#ffdb8a99";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(b.x-b.vx*1.5,b.y-b.vy*1.5);ctx.lineTo(b.x,b.y);ctx.stroke();});
       // player soldier
-      ctx.save();ctx.translate(g.x,g.y);ctx.rotate(Math.atan2(g.aimY,g.aimX));ctx.fillStyle="#7bc0a1";ctx.fillRect(-9,-9,18,20);ctx.fillStyle="#d8b58f";ctx.beginPath();ctx.arc(0,-11,7,0,7);ctx.fill();ctx.fillStyle="#263b35";ctx.fillRect(3,-3,22,5);ctx.fillStyle="#d4e9d8";ctx.beginPath();ctx.arc(0,0,2,0,7);ctx.fill();ctx.restore();
+      ctx.save();ctx.translate(g.x,g.y);ctx.rotate(Math.atan2(g.aimY,g.aimX));ctx.fillStyle="#26372d";ctx.beginPath();ctx.ellipse(0,4,14,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#769b72";ctx.fillRect(-9,-9,18,20);ctx.fillStyle="#d8b58f";ctx.beginPath();ctx.arc(0,-11,7,0,7);ctx.fill();ctx.fillStyle="#3c4b36";ctx.beginPath();ctx.arc(0,-14,8,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle="#263b35";ctx.fillRect(3,-3,22,5);ctx.fillStyle="#d4e9d8";ctx.beginPath();ctx.arc(0,0,2,0,7);ctx.fill();ctx.restore();
       if(!running||paused||g.over){ctx.fillStyle="#101711c9";ctx.fillRect(0,0,w,h);ctx.textAlign="center";ctx.fillStyle="#f3ead0";ctx.font="900 27px system-ui";ctx.fillText(g.over?"GÖREV BAŞARISIZ":paused?"DURAKLATILDI":"CEPHE HATTI",w/2,h/2-12);ctx.fillStyle="#e0dfc5";ctx.font="13px system-ui";ctx.fillText(g.over?"Skor: "+g.score+" · Etkisiz hale getirilen: "+g.kills:"Birliğini yönet. Düşman dalgalarını püskürt!",w/2,h/2+18);}
       raf=requestAnimationFrame(loop);
     };raf=requestAnimationFrame(loop);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",resize)};
