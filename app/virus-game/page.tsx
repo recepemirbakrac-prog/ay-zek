@@ -1,129 +1,34 @@
 "use client";
-
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bug, HeartPulse, Play, RotateCcw, Shield, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, Play, Shield, Zap } from "lucide-react";
 import "./game.css";
-
-type Point = { x: number; y: number };
-const W = 10;
-const H = 7;
-const startPlayer: Point = { x: 1, y: 3 };
-const startVirus: Point[] = [{ x: 8, y: 2 }, { x: 7, y: 5 }, { x: 5, y: 1 }];
-const startSerum: Point = { x: 4, y: 3 };
-const same = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
-const randomPoint = (avoid: Point[]): Point => {
-  for (let i = 0; i < 80; i++) {
-    const p = { x: Math.floor(Math.random() * W), y: Math.floor(Math.random() * H) };
-    if (!avoid.some((v) => same(v, p))) return p;
-  }
-  return { x: 0, y: 0 };
-};
-
-export default function VirusGamePage() {
-  const [player, setPlayer] = useState<Point>(startPlayer);
-  const [viruses, setViruses] = useState<Point[]>(startVirus);
-  const [serum, setSerum] = useState<Point>(startSerum);
-  const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [active, setActive] = useState(false);
-  const [over, setOver] = useState(false);
-  const [level, setLevel] = useState(1);
-
-  const reset = useCallback(() => {
-    setPlayer(startPlayer); setViruses(startVirus); setSerum(startSerum);
-    setScore(0); setLives(3); setLevel(1); setOver(false); setActive(true);
-  }, []);
-
-  const move = useCallback((dx: number, dy: number) => {
-    if (!active || over) return;
-    const next = { x: Math.max(0, Math.min(W - 1, player.x + dx)), y: Math.max(0, Math.min(H - 1, player.y + dy)) };
-    if (viruses.some((v) => same(v, next))) {
-      const remaining = lives - 1;
-      setLives(remaining);
-      if (remaining <= 0) { setOver(true); setActive(false); }
-      setPlayer(startPlayer);
-      return;
-    }
-    if (same(serum, next)) {
-      setScore((n) => n + 10);
-      setSerum(randomPoint([...viruses, next]));
-    }
-    setPlayer(next);
-  }, [active, over, player, serum, viruses, lives]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const keys: Record<string, [number, number]> = { ArrowUp: [0,-1], w: [0,-1], ArrowDown: [0,1], s: [0,1], ArrowLeft: [-1,0], a: [-1,0], ArrowRight: [1,0], d: [1,0] };
-      const dir = keys[e.key];
-      if (dir) { e.preventDefault(); move(dir[0], dir[1]); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [move]);
-
-  useEffect(() => {
-    if (!active || over) return;
-    const timer = window.setInterval(() => {
-      const moved = viruses.map((v) => {
-        const dx = player.x === v.x ? 0 : player.x > v.x ? 1 : -1;
-        const dy = player.y === v.y ? 0 : player.y > v.y ? 1 : -1;
-        const choices = Math.random() > .45 ? [{x:v.x+dx,y:v.y},{x:v.x,y:v.y+dy}] : [{x:v.x,y:v.y+dy},{x:v.x+dx,y:v.y}];
-        return choices.find((p) => p.x >= 0 && p.x < W && p.y >= 0 && p.y < H) || v;
-      });
-      if (moved.some((v) => same(v, player))) {
-        const remaining = lives - 1;
-        setLives(remaining);
-        if (remaining <= 0) { setOver(true); setActive(false); }
-        setViruses(startVirus);
-      } else {
-        setViruses(moved);
-      }
-      setLevel((n) => Math.min(5, 1 + Math.floor(score / 50)));
-    }, Math.max(350, 950 - level * 100));
-    return () => window.clearInterval(timer);
-  }, [active, over, player, viruses, lives, level, score]);
-
-  const cells = Array.from({ length: W * H }, (_, i) => ({ x: i % W, y: Math.floor(i / W) }));
-  return (
-    <main className="virus-game">
-      <header className="game-nav">
-        <Link href="/" className="game-brand"><span><ShieldCheck size={20}/></span> AY ZEK <b>ARCADE</b></Link>
-        <Link href="/virus-simulator" className="back-link"><ArrowLeft size={15}/> Simülatör</Link>
-      </header>
-      <section className="game-hero">
-        <div className="game-kicker"><Sparkles size={14}/> ARCADE · GÜVENLİ OYUN</div>
-        <h1>VİRÜS <span>AVCISI</span></h1>
-        <p>Kırmızı virüslerden kaç, mavi panzehirleri topla ve sanal ağı kurtar!</p>
-      </section>
-      <section className="game-layout">
-        <div className="board-wrap">
-          <div className="board-top"><span><i/> SANAL LABORATUVAR</span><span>BÖLÜM {level}</span></div>
-          <div className="game-board" role="grid" aria-label="Virüs Avcısı oyun alanı">
-            {cells.map((cell) => {
-              const isPlayer = same(player, cell);
-              const isVirus = viruses.some((v) => same(v, cell));
-              const isSerum = same(serum, cell);
-              return <div className={`game-cell ${isPlayer ? "player-cell" : ""} ${isVirus ? "virus-cell" : ""} ${isSerum ? "serum-cell" : ""}`} key={cell.y * W + cell.x}>
-                {isPlayer && <Shield size={21}/>}
-                {isVirus && <Bug size={20}/>}
-                {isSerum && <span className="serum-orb">✚</span>}
-              </div>;
-            })}
-            {!active && !over && <div className="board-overlay"><div><ShieldCheck size={35}/><b>Laboratuvara hazır mısın?</b><span>Başlat ve virüslerden kaç!</span><button onClick={reset}><Play size={16}/> Oyuna başla</button></div></div>}
-            {over && <div className="board-overlay"><div><Bug size={35}/><b>Oyun bitti!</b><span>Toplam puanın: {score}</span><button onClick={reset}><RotateCcw size={16}/> Yeniden oyna</button></div></div>}
-          </div>
-          <div className="board-help">Hareket: <b>W A S D</b> veya <b>← ↑ ↓ →</b></div>
-        </div>
-        <aside className="game-side">
-          <div className="score-card"><span><Trophy size={17}/> PUAN</span><strong>{score}</strong><small>Her panzehir +10 puan</small></div>
-          <div className="lives-card"><span><HeartPulse size={17}/> CAN HAKKI</span><div>{[1,2,3].map((n)=><i className={n <= lives ? "life-on" : ""} key={n}/>)}</div></div>
-          <div className="legend-card"><b>OYUN REHBERİ</b><div><span className="legend-player"><Shield size={15}/></span> Sen – Koruyucu</div><div><span className="legend-virus"><Bug size={15}/></span> Virüs – Yakalanma!</div><div><span className="legend-serum">✚</span> Panzehir – Topla</div></div>
-          <div className="mobile-pad"><span>HAREKET KONTROLLERİ</span><button onClick={()=>move(0,-1)} aria-label="Yukarı">↑</button><div><button onClick={()=>move(-1,0)} aria-label="Sol">←</button><button onClick={()=>move(0,1)} aria-label="Aşağı">↓</button><button onClick={()=>move(1,0)} aria-label="Sağ">→</button></div></div>
-          <button className="restart-game" onClick={reset}><RotateCcw size={16}/> {active ? "Oyunu sıfırla" : "Oyunu başlat"}</button>
-        </aside>
-      </section>
-      <footer className="game-footer"><ShieldCheck size={15}/> Bu oyundaki virüsler tamamen kurgusaldır; cihazına, dosyalarına veya ağına erişmez.</footer>
-    </main>
-  );
+type Enemy={x:number;y:number;r:number;speed:number;phase:number};
+type Shot={x:number;y:number;vx:number;vy:number;life:number};
+type Game={x:number;y:number;enemies:Enemy[];shots:Shot[];score:number;hp:number;boost:number;spawn:number;fire:number;over:boolean};
+const fresh=():Game=>({x:0,y:0,enemies:[],shots:[],score:0,hp:100,boost:100,spawn:0,fire:0,over:false});
+export default function VirusGamePage(){
+ const canvas=useRef<HTMLCanvasElement>(null),g=useRef<Game>(fresh()),keys=useRef<Record<string,boolean>>({});
+ const [started,setStarted]=useState(false),[paused,setPaused]=useState(false),[score,setScore]=useState(0),[hp,setHp]=useState(100),[boost,setBoost]=useState(100),[over,setOver]=useState(false);
+ const start=()=>{const c=canvas.current;if(!c)return;const v=fresh();v.x=c.clientWidth/2;v.y=c.clientHeight/2;g.current=v;setScore(0);setHp(100);setBoost(100);setOver(false);setPaused(false);setStarted(true);};
+ useEffect(()=>{const d=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();keys.current[k]=true;};const u=(e:KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=false;};window.addEventListener("keydown",d);window.addEventListener("keyup",u);return()=>{window.removeEventListener("keydown",d);window.removeEventListener("keyup",u);};},[]);
+ useEffect(()=>{const c=canvas.current;if(!c)return;const ctx=c.getContext("2d");if(!ctx)return;let raf=0,last=0,frame=0,w=0,h=0;
+ const resize=()=>{const r=c.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);w=r.width;h=r.height;c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(!g.current.x){g.current.x=w/2;g.current.y=h/2;}};resize();window.addEventListener("resize",resize);
+ const virus=(x:number,y:number,r:number,a:number)=>{ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.shadowBlur=17;ctx.shadowColor="#74ffbd";ctx.strokeStyle="#9affc8";ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<12;i++){const t=i*Math.PI/6,rr=r*(i%2?.82:1.08);if(!i)ctx.moveTo(Math.cos(t)*rr,Math.sin(t)*rr);else ctx.lineTo(Math.cos(t)*rr,Math.sin(t)*rr);}ctx.closePath();ctx.stroke();ctx.fillStyle="#53ffa033";ctx.fill();ctx.beginPath();ctx.arc(0,0,r*.38,0,7);ctx.fillStyle="#b4ffd5";ctx.fill();ctx.restore();};
+ const loop=(t:number)=>{const dt=Math.min((t-last)/16.67||1,2);last=t;frame++;ctx.clearRect(0,0,w,h);const bg=ctx.createLinearGradient(0,0,w,h);bg.addColorStop(0,"#06131d");bg.addColorStop(.6,"#071b27");bg.addColorStop(1,"#081226");ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+ ctx.save();ctx.strokeStyle="#1b829044";ctx.lineWidth=1;for(let i=0;i<17;i++){const y=(i*67+frame*.18)%(h+60)-30;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w*.22,y);ctx.lineTo(w*.28,y+22);ctx.lineTo(w*.62,y+22);ctx.lineTo(w*.7,y-20);ctx.lineTo(w,y-20);ctx.stroke();}for(let i=0;i<12;i++){const x=i*w/11;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h*.25);ctx.lineTo(x+20,h*.32);ctx.lineTo(x+20,h*.75);ctx.stroke();}ctx.restore();
+ const v=g.current;
+ if(started&&!paused&&!v.over){v.spawn-=dt;v.fire-=dt;let dx=0,dy=0,k=keys.current;if(k.a||k.arrowleft)dx--;if(k.d||k.arrowright)dx++;if(k.w||k.arrowup)dy--;if(k.s||k.arrowdown)dy++;const turbo=(k.shift||k[" "])&&v.boost>0,speed=(turbo?6:3.3)*dt;if(turbo)v.boost=Math.max(0,v.boost-.7*dt);else v.boost=Math.min(100,v.boost+.2*dt);const l=Math.hypot(dx,dy)||1;v.x=Math.max(18,Math.min(w-18,v.x+dx/l*speed));v.y=Math.max(18,Math.min(h-18,v.y+dy/l*speed));
+ if(v.spawn<=0){const edge=Math.floor(Math.random()*4);v.enemies.push({x:edge===0?0:edge===1?w:Math.random()*w,y:edge===2?0:edge===3?h:Math.random()*h,r:12+Math.random()*5,speed:.55+Math.random()*.4,phase:Math.random()*6});v.spawn=Math.max(18,66-v.score*.15);}
+ if(v.fire<=0&&v.enemies.length){const target=v.enemies.reduce((a,b)=>Math.hypot(a.x-v.x,a.y-v.y)<Math.hypot(b.x-v.x,b.y-v.y)?a:b),a=Math.atan2(target.y-v.y,target.x-v.x);v.shots.push({x:v.x,y:v.y,vx:Math.cos(a)*9,vy:Math.sin(a)*9,life:60});v.fire=9;}
+ v.enemies.forEach(e=>{const a=Math.atan2(v.y-e.y,v.x-e.x);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.phase+=.035*dt;if(Math.hypot(e.x-v.x,e.y-v.y)<e.r+12)v.hp-=.35*dt;});
+ v.shots.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;const n=v.enemies.findIndex(e=>Math.hypot(e.x-s.x,e.y-s.y)<e.r+5);if(n>=0){v.enemies.splice(n,1);s.life=0;v.score+=10;}});v.shots=v.shots.filter(s=>s.life>0&&s.x>-20&&s.x<w+20&&s.y>-20&&s.y<h+20);
+ if(v.hp<=0){v.hp=0;v.over=true;setOver(true);}if(frame%8===0){setScore(v.score);setHp(Math.round(v.hp));setBoost(Math.round(v.boost));}}
+ v.enemies.forEach(e=>virus(e.x,e.y,e.r,e.phase));v.shots.forEach(s=>{ctx.save();ctx.shadowBlur=16;ctx.shadowColor="#ff9b62";ctx.strokeStyle="#ffc08b";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(s.x-s.vx,s.y-s.vy);ctx.lineTo(s.x,s.y);ctx.stroke();ctx.restore();});
+ const target=v.enemies[0],angle=target?Math.atan2(target.y-v.y,target.x-v.x):0;ctx.save();ctx.translate(v.x,v.y);ctx.rotate(angle);ctx.shadowBlur=22;ctx.shadowColor="#55cfff";ctx.fillStyle="#17405a";ctx.strokeStyle="#8be7ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-11,-11);ctx.lineTo(-5,0);ctx.lineTo(-11,11);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+ ctx.save();ctx.strokeStyle="#ff4d7999";ctx.shadowColor="#ff376d";ctx.shadowBlur=14;ctx.lineWidth=3;ctx.strokeRect(2,2,w-4,h-4);ctx.restore();
+ if(!started||paused||v.over){ctx.fillStyle="#020a13b8";ctx.fillRect(0,0,w,h);ctx.textAlign="center";ctx.fillStyle=v.over?"#ff8094":"#80f2db";ctx.font="800 27px Manrope,Arial";ctx.fillText(v.over?"SİSTEM İSTİLA EDİLDİ":paused?"DURAKLATILDI":"VİRÜS SAVUNMASI",w/2,h/2-12);ctx.fillStyle="#d4e9f3";ctx.font="13px Manrope,Arial";ctx.fillText(v.over?"Tekrar başlat ve ağı kurtar": "Sanal ağı virüs sürülerinden koru",w/2,h/2+18);}
+ raf=requestAnimationFrame(loop);};raf=requestAnimationFrame(loop);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",resize);};},[started,paused]);
+ const pointer=(e:{clientX:number;clientY:number;currentTarget:HTMLCanvasElement})=>{if(!started||paused||over)return;const r=e.currentTarget.getBoundingClientRect();g.current.x=e.clientX-r.left;g.current.y=e.clientY-r.top;};
+ return <main className="virus-game"><header className="game-nav"><Link href="/" className="game-brand"><span><Shield size={20}/></span> AY ZEK <b>ARCADE</b></Link><Link href="/virus-simulator" className="back-link"><ArrowLeft size={15}/> Simülatör</Link></header><section className="game-hero"><div className="game-kicker"><Zap size={14}/> NEON ARENA · SAVUNMA</div><h1>VİRÜS <span>SAVUNMASI</span></h1><p>Neon arenada virüs sürülerini durdur, ağı koru ve en yüksek puanı yap!</p></section><section className="shooter-shell"><div className="shooter-hud"><div><small>SKOR</small><b>{String(score).padStart(5,"0")}</b></div><div><small>AĞ BÜTÜNLÜĞÜ</small><b className="hp-value">{hp}%</b></div><div><small>BOOST</small><b className="boost-value">{boost}%</b></div><button onClick={()=>setPaused(p=>!p)} disabled={!started||over}>{paused?"DEVAM":"DURAKLAT"}</button></div><canvas ref={canvas} className="shooter-canvas" onPointerMove={pointer} onPointerDown={pointer} aria-label="Virüs Savunması oyun alanı"/><div className="shooter-controls"><span>WASD / OK TUŞLARI: HAREKET</span><span>SHIFT: BOOST</span><span>FARE / DOKUN: KONUM BELİRLE</span></div>{(!started||over)&&<div className="shooter-start"><b>{over?"OYUN BİTTİ":"SİSTEM HAZIR"}</b><span>{over?"Skorun: "+score:"Otomatik savunma atışlarıyla virüsleri yok et."}</span><button onClick={start}><Play size={16}/>{over?"TEKRAR OYNA":"OYUNU BAŞLAT"}</button></div>}</section><footer className="game-footer"><Shield size={15}/> Tamamen sanal oyun. Gerçek dosyalara, cihazlara veya ağlara erişmez.</footer></main>;
 }
