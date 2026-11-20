@@ -79,7 +79,7 @@ export default function VirusSimulatorPage() {
     <main className="sim-shell">
       <header className="sim-topbar">
         <a className="sim-brand" href="/"><span className="brand-mark"><ShieldCheck size={20} /></span><span>AY ZEK <b>LAB</b></span></a>
-        <span className="sim-top-label"><span className="live-dot" /> GÜVENLİ SANDBOX</span>
+        <div className="sim-top-label"><span className="live-dot" /> GÜVENLİ SANDBOX</div><a href="/temizleyici" style={{color:"#69dcbc",fontSize:12,textDecoration:"none"}}>Ay Zek Temizleyici →</a>
       </header>
 
       <section className="sim-hero">
