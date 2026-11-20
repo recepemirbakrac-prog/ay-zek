@@ -2,66 +2,62 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Crosshair, Heart, Shield, Target, Trophy } from "lucide-react";
+import * as THREE from "three";
+import { ArrowLeft, Crosshair, Heart, Shield, Target, Trophy, Pause, Play } from "lucide-react";
 import "./war.css";
 
-type Soldier = { x:number; y:number; hp:number; speed:number; phase:number };
-type Shot = { x:number; y:number; vx:number; vy:number; life:number; enemy:boolean };
-type Game = { x:number; y:number; aimX:number; aimY:number; enemies:Soldier[]; shots:Shot[]; hp:number; score:number; kills:number; wave:number; spawn:number; fire:number; over:boolean };
-const fresh = ():Game => ({x:0,y:0,aimX:1,aimY:0,enemies:[],shots:[],hp:100,score:0,kills:0,wave:1,spawn:0,fire:0,over:false});
-const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
-
-export default function WarGame(){
-  const canvas=useRef<HTMLCanvasElement>(null), game=useRef<Game>(fresh()), keys=useRef<Record<string,boolean>>({});
-  const [running,setRunning]=useState(false),[paused,setPaused]=useState(false),[hp,setHp]=useState(100),[score,setScore]=useState(0),[kills,setKills]=useState(0),[wave,setWave]=useState(1);
-  const start=useCallback(()=>{const c=canvas.current;if(!c)return;const g=fresh();g.x=c.clientWidth/2;g.y=c.clientHeight/2;game.current=g;setHp(100);setScore(0);setKills(0);setWave(1);setPaused(false);setRunning(true);},[]);
-  const aim=(e:{clientX:number;clientY:number;currentTarget:HTMLCanvasElement})=>{const r=e.currentTarget.getBoundingClientRect();const g=game.current;const dx=e.clientX-r.left-g.x,dy=e.clientY-r.top-g.y;const d=Math.hypot(dx,dy)||1;g.aimX=dx/d;g.aimY=dy/d;};
-  const fire=(e:{clientX:number;clientY:number;currentTarget:HTMLCanvasElement})=>{aim(e);const r=e.currentTarget.getBoundingClientRect(),g=game.current;const dx=e.clientX-r.left-g.x,dy=e.clientY-r.top-g.y,d=Math.hypot(dx,dy)||1;g.shots.push({x:g.x,y:g.y,vx:dx/d*9,vy:dy/d*9,life:55,enemy:false});};
-  useEffect(()=>{const down=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();keys.current[k]=true;};const up=(e:KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=false;};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up)};},[]);
-  useEffect(()=>{const c=canvas.current;if(!c)return;const ctx=c.getContext("2d");if(!ctx)return;let raf=0,last=0,frame=0,w=0,h=0;
-    const resize=()=>{const r=c.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);w=r.width;h=r.height;c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(!game.current.x){game.current.x=w/2;game.current.y=h/2;}};resize();window.addEventListener("resize",resize);
-    const soldier=(s:Soldier)=>{ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.sin(s.phase)*.07);ctx.fillStyle="#b94f3f";ctx.fillRect(-7,-8,14,17);ctx.fillStyle="#d6ad82";ctx.beginPath();ctx.arc(0,-11,6,0,Math.PI*2);ctx.fill();ctx.fillStyle="#343b36";ctx.fillRect(-9,3,6,10);ctx.fillRect(3,3,6,10);ctx.fillStyle="#222c29";ctx.fillRect(4,-3,14,4);ctx.restore();};
-    const loop=(t:number)=>{const dt=Math.min((t-last)/16.67||1,2);last=t;frame++;ctx.clearRect(0,0,w,h);
-      // layered battlefield ground
-      const ground=ctx.createLinearGradient(0,0,w,h);ground.addColorStop(0,"#788365");ground.addColorStop(.48,"#59694d");ground.addColorStop(1,"#394b3b");ctx.fillStyle=ground;ctx.fillRect(0,0,w,h);
-      for(let i=0;i<210;i++){const x=(i*137+37)%w,y=(i*83+19)%h;ctx.fillStyle=i%4===0?"#c2b78320":i%3===0?"#202f2528":"#e0d5a012";ctx.beginPath();ctx.ellipse(x,y,(i%5)+2,(i%3)+1,(i%7)*.3,0,Math.PI*2);ctx.fill();}
-      // winding dirt road
-      ctx.beginPath();ctx.moveTo(w*.05,h*.92);ctx.bezierCurveTo(w*.28,h*.72,w*.38,h*.52,w*.58,h*.47);ctx.bezierCurveTo(w*.78,h*.42,w*.76,h*.18,w*.98,h*.05);ctx.strokeStyle="#b7a47a55";ctx.lineWidth=43;ctx.stroke();ctx.strokeStyle="#d5c49a35";ctx.lineWidth=2;ctx.setLineDash([13,16]);ctx.stroke();ctx.setLineDash([]);
-      // subtle tactical grid
-      ctx.strokeStyle="#e3dfb20d";ctx.lineWidth=1;for(let x=0;x<w;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
-      // forest clusters
-      for(let i=0;i<22;i++){const x=(i*173+61)%w,y=(i*109+31)%h;if(Math.hypot(x-w*.5,y-h*.5)<70)continue;ctx.fillStyle="#17291f55";ctx.beginPath();ctx.ellipse(x+4,y+7,15,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=i%2?"#263f2c":"#345239";ctx.beginPath();ctx.arc(x,y,12+(i%4)*2,0,Math.PI*2);ctx.fill();ctx.fillStyle="#71815a88";ctx.beginPath();ctx.arc(x-4,y-5,5,0,Math.PI*2);ctx.fill();}
-      // ruined outpost buildings
-      for(const [x,y,bw,bh] of [[w*.08,h*.18,64,42],[w*.82,h*.12,74,48],[w*.82,h*.78,58,40]] as number[][]){ctx.fillStyle="#1b2922aa";ctx.fillRect(x+5,y+7,bw,bh);ctx.fillStyle="#817c66";ctx.fillRect(x,y,bw,bh);ctx.fillStyle="#a59b7c";ctx.fillRect(x-3,y-5,bw+6,8);ctx.fillStyle="#414b40";ctx.fillRect(x+10,y+12,15,17);ctx.fillRect(x+bw-25,y+12,15,17);ctx.fillStyle="#303a32";ctx.fillRect(x+bw/2-5,y+bh-16,12,16);ctx.strokeStyle="#c5b99566";ctx.strokeRect(x,y,bw,bh);}
-      // shell craters
-      for(let i=0;i<9;i++){const x=(i*211+93)%w,y=(i*127+73)%h;ctx.fillStyle="#26352d55";ctx.beginPath();ctx.ellipse(x,y,11,6,.3,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#b0a17a55";ctx.stroke();}
-      // sandbag defensive positions
-      for(const [x,y] of [[w*.2,h*.25],[w*.78,h*.68],[w*.68,h*.2],[w*.25,h*.76]] as number[][]){ctx.fillStyle="#26352d88";ctx.fillRect(x-30,y-5,62,22);for(let j=0;j<4;j++){ctx.fillStyle=j%2?"#a09168":"#c0ad7e";ctx.beginPath();ctx.roundRect(x-27+j*14,y-10,14,12,4);ctx.fill();ctx.strokeStyle="#675e43";ctx.stroke();}ctx.fillStyle="#716747";ctx.fillRect(x-28,y+5,56,5);}
-      const g=game.current;
-      if(running&&!paused&&!g.over){const k=keys.current;let dx=0,dy=0;if(k.w||k.arrowup)dy--;if(k.s||k.arrowdown)dy++;if(k.a||k.arrowleft)dx--;if(k.d||k.arrowright)dx++;const n=Math.hypot(dx,dy)||1;g.x=clamp(g.x+dx/n*3.7*dt,15,w-15);g.y=clamp(g.y+dy/n*3.7*dt,15,h-15);
-        g.spawn-=dt;g.fire-=dt;if(g.spawn<=0){const edge=Math.floor(Math.random()*4);g.enemies.push({x:edge===0?-15:edge===1?w+15:Math.random()*w,y:edge===2?-15:edge===3?h+15:Math.random()*h,hp:2,speed:.48+Math.random()*.25+g.wave*.025,phase:Math.random()*8});g.spawn=Math.max(17,62-g.wave*3);}
-        // automatic rifle fire toward the closest enemy
-        if(g.fire<=0&&g.enemies.length){const target=g.enemies.reduce((a,b)=>Math.hypot(a.x-g.x,a.y-g.y)<Math.hypot(b.x-g.x,b.y-g.y)?a:b);const a=Math.atan2(target.y-g.y,target.x-g.x);g.aimX=Math.cos(a);g.aimY=Math.sin(a);g.shots.push({x:g.x+g.aimX*13,y:g.y+g.aimY*13,vx:g.aimX*10,vy:g.aimY*10,life:48,enemy:false});g.fire=10;}
-        g.enemies.forEach(s=>{const a=Math.atan2(g.y-s.y,g.x-s.x);s.x+=Math.cos(a)*s.speed*dt;s.y+=Math.sin(a)*s.speed*dt;s.phase+=.04*dt;if(Math.hypot(s.x-g.x,s.y-g.y)<24)g.hp-=.28*dt;});
-        g.shots.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;const idx=b.enemy?-1:g.enemies.findIndex(s=>Math.hypot(s.x-b.x,s.y-b.y)<15);if(idx>=0){const s=g.enemies[idx];s.hp--;b.life=0;if(s.hp<=0){g.enemies.splice(idx,1);g.kills++;g.score+=100;}}});
-        g.shots=g.shots.filter(b=>b.life>0&&b.x>-30&&b.x<w+30&&b.y>-30&&b.y<h+30);g.wave=1+Math.floor(g.kills/8);if(g.hp<=0){g.hp=0;g.over=true;setRunning(false);}
-        if(frame%6===0){setHp(Math.ceil(g.hp));setScore(g.score);setKills(g.kills);setWave(g.wave);}
-      }
-      g.enemies.forEach(soldier);
-      g.shots.forEach(b=>{ctx.fillStyle="#fff0b1";ctx.shadowBlur=14;ctx.shadowColor="#ffb84d";ctx.beginPath();ctx.arc(b.x,b.y,3,0,7);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle="#ffdb8a99";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(b.x-b.vx*1.5,b.y-b.vy*1.5);ctx.lineTo(b.x,b.y);ctx.stroke();});
-      // player soldier
-      ctx.save();ctx.translate(g.x,g.y);ctx.rotate(Math.atan2(g.aimY,g.aimX));ctx.fillStyle="#26372d";ctx.beginPath();ctx.ellipse(0,4,14,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#769b72";ctx.fillRect(-9,-9,18,20);ctx.fillStyle="#d8b58f";ctx.beginPath();ctx.arc(0,-11,7,0,7);ctx.fill();ctx.fillStyle="#3c4b36";ctx.beginPath();ctx.arc(0,-14,8,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle="#263b35";ctx.fillRect(3,-3,22,5);ctx.fillStyle="#d4e9d8";ctx.beginPath();ctx.arc(0,0,2,0,7);ctx.fill();ctx.restore();
-      if(!running||paused||g.over){ctx.fillStyle="#101711c9";ctx.fillRect(0,0,w,h);ctx.textAlign="center";ctx.fillStyle="#f3ead0";ctx.font="900 27px system-ui";ctx.fillText(g.over?"GÖREV BAŞARISIZ":paused?"DURAKLATILDI":"CEPHE HATTI",w/2,h/2-12);ctx.fillStyle="#e0dfc5";ctx.font="13px system-ui";ctx.fillText(g.over?"Skor: "+g.score+" · Etkisiz hale getirilen: "+g.kills:"Birliğini yönet. Düşman dalgalarını püskürt!",w/2,h/2+18);}
-      raf=requestAnimationFrame(loop);
-    };raf=requestAnimationFrame(loop);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",resize)};
-  },[running,paused]);
-  return <main className="war-page"><header className="war-nav"><Link href="/" className="war-brand">✦ AY ZEK <b>ARENA</b></Link><Link href="/" className="war-back"><ArrowLeft size={15}/> Ana sayfa</Link></header>
-    <section className="war-hero"><div className="war-kicker"><Shield size={14}/> TAKTİK SAVAŞ · GÖREV 01</div><h1>CEPHE <em>HATTI</em></h1><p>Birliğini yönet, düşman birliklerini durdur ve cepheyi savun.</p></section>
+type Enemy = { root: THREE.Group; hp: number; speed: number };
+type Shot = { mesh: THREE.Mesh; life: number };
+export default function WarGame() {
+  const mount = useRef<HTMLDivElement>(null);
+  const world = useRef<{player:THREE.Group; camera:THREE.PerspectiveCamera; renderer:THREE.WebGLRenderer; scene:THREE.Scene; enemies:Enemy[]; shots:Shot[]; keys:Set<string>; yaw:number; pitch:number; hp:number; score:number; kills:number; wave:number; spawn:number; fire:number; last:number; running:boolean; paused:boolean; over:boolean; muzzle:number} | null>(null);
+  const [running,setRunning]=useState(false),[paused,setPaused]=useState(false),[hp,setHp]=useState(100),[score,setScore]=useState(0),[kills,setKills]=useState(0),[wave,setWave]=useState(1),[over,setOver]=useState(false);
+  const runningRef=useRef(false),pausedRef=useRef(false);
+  const start=useCallback(()=>{const w=world.current;if(!w)return;w.enemies.forEach(e=>w.scene.remove(e.root));w.shots.forEach(s=>w.scene.remove(s.mesh));w.enemies=[];w.shots=[];w.player.position.set(0,0,0);w.hp=100;w.score=0;w.kills=0;w.wave=1;w.spawn=1;w.fire=0;w.over=false;w.running=true;w.paused=false;runningRef.current=true;pausedRef.current=false;setHp(100);setScore(0);setKills(0);setWave(1);setOver(false);setPaused(false);setRunning(true);},[]);
+  const togglePause=()=>{const w=world.current;if(!w||!w.running)return;w.paused=!w.paused;pausedRef.current=w.paused;setPaused(w.paused);};
+  useEffect(()=>{
+    const host=mount.current;if(!host)return;
+    const scene=new THREE.Scene();scene.background=new THREE.Color(0x9eaa9a);scene.fog=new THREE.FogExp2(0x9eaa9a,0.012);
+    const camera=new THREE.PerspectiveCamera(65,host.clientWidth/host.clientHeight,.1,500);camera.position.set(0,5,9);
+    const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(host.clientWidth,host.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;host.appendChild(renderer.domElement);
+    scene.add(new THREE.HemisphereLight(0xdce7d4,0x354333,2));
+    const sun=new THREE.DirectionalLight(0xffe2b4,3);sun.position.set(-25,45,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(260,260,1,1),new THREE.MeshStandardMaterial({color:0x697957,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+    const dirt=new THREE.Mesh(new THREE.PlaneGeometry(18,260),new THREE.MeshStandardMaterial({color:0x9b8964,roughness:1}));dirt.rotation.x=-Math.PI/2;dirt.position.set(0,.025,-12);scene.add(dirt);
+    const addBox=(x:number,y:number,z:number,sx:number,sy:number,sz:number,color:number)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshStandardMaterial({color,roughness:.95}));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;};
+    // Detailed ruined outposts and defensive positions
+    for(const [x,z] of [[-22,-28],[24,-34],[30,22],[-34,27]] as number[][]){addBox(x,2,z,12,4,10,0x777665);addBox(x,4.15,z,13,.5,11,0x4a5146);addBox(x-2,1.2,z+5.1,2.2,2.4,.2,0x303a32);addBox(x+2,1.2,z+5.1,2.2,2.4,.2,0x303a32);}
+    for(let i=0;i<75;i++){const x=(Math.sin(i*91.7)*.5+.5)*220-110,z=(Math.cos(i*47.3)*.5+.5)*220-110;if(Math.abs(x)<12&&Math.abs(z)<16)continue;const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.42,2.8,7),new THREE.MeshStandardMaterial({color:0x554632}));trunk.position.set(x,1.4,z);trunk.castShadow=true;scene.add(trunk);const crown=new THREE.Mesh(new THREE.ConeGeometry(2.2+((i*7)%10)/10,5.5,7),new THREE.MeshStandardMaterial({color:i%2?0x294632:0x38543a,roughness:1}));crown.position.set(x,5,z);crown.castShadow=true;scene.add(crown);}
+    for(let i=0;i<16;i++){const x=(i%4-1.5)*13,z=(Math.floor(i/4)-1.5)*13-5;const bag=addBox(x,.55,z,5,1.1,1.2,0x9b8b65);bag.rotation.y=(i%3)*.3;}
+    // Player: layered low-poly soldier with helmet, vest, legs and rifle
+    const player=new THREE.Group();scene.add(player);
+    const mat=(color:number,roughness=0.85)=>new THREE.MeshStandardMaterial({color,roughness});
+    const body=new THREE.Mesh(new THREE.CapsuleGeometry(.48,.8,4,8),mat(0x536747));body.position.y=1.45;body.castShadow=true;player.add(body);
+    const vest=new THREE.Mesh(new THREE.BoxGeometry(.95,.8,.58),mat(0x344332));vest.position.set(0,1.55,-.08);vest.castShadow=true;player.add(vest);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.32,12,10),mat(0xc39a72));head.position.y=2.18;head.castShadow=true;player.add(head);
+    const helmet=new THREE.Mesh(new THREE.SphereGeometry(.36,12,8,0,Math.PI*2,0,Math.PI/2),mat(0x3d5038));helmet.position.y=2.36;player.add(helmet);
+    const rifle=new THREE.Mesh(new THREE.BoxGeometry(.14,.14,1.35),mat(0x202722));rifle.position.set(.36,1.72,-.8);player.add(rifle);
+    const legGeo=new THREE.BoxGeometry(.27,.75,.3);for(const x of [-.25,.25]){const leg=new THREE.Mesh(legGeo,mat(0x303a2e));leg.position.set(x,.48,0);player.add(leg);}
+    const enemies:Enemy[]=[],shots:Shot[]=[];const keys=new Set<string>();let yaw=0,pitch=-.12,last=performance.now(),spawn=1,fire=0,hpVal=100,scoreVal=0,killsVal=0,waveVal=1,overVal=false,muzzle=0;
+    const makeEnemy=(x:number,z:number)=>{const root=new THREE.Group();const uniform=mat(0x665044),skin=mat(0xb98e6b),dark=mat(0x292e2a);const torso=new THREE.Mesh(new THREE.BoxGeometry(.9,1.15,.55),uniform);torso.position.y=1.35;torso.castShadow=true;root.add(torso);const head2=new THREE.Mesh(new THREE.SphereGeometry(.3,10,8),skin);head2.position.y=2.15;root.add(head2);const helmet2=new THREE.Mesh(new THREE.SphereGeometry(.34,10,8,0,Math.PI*2,0,Math.PI/2),dark);helmet2.position.y=2.3;root.add(helmet2);const gun=new THREE.Mesh(new THREE.BoxGeometry(.13,.13,1),dark);gun.position.set(.4,1.55,-.5);root.add(gun);for(const lx of [-.24,.24]){const leg2=new THREE.Mesh(new THREE.BoxGeometry(.25,.7,.27),dark);leg2.position.set(lx,.42,0);root.add(leg2);}root.position.set(x,0,z);scene.add(root);enemies.push({root,hp:3,speed:1.1+Math.random()*.6+waveVal*.12});};
+    const fireShot=()=>{if(!enemies.length)return;const target=enemies.reduce((a,b)=>a.root.position.distanceTo(player.position)<b.root.position.distanceTo(player.position)?a:b);const from=new THREE.Vector3(0,1.7,-1).applyMatrix4(player.matrixWorld);const to=target.root.position.clone().add(new THREE.Vector3(0,1.3,0));const dir=to.sub(from).normalize();const mesh=new THREE.Mesh(new THREE.SphereGeometry(.075,8,8),new THREE.MeshBasicMaterial({color:0xffdf91}));mesh.position.copy(from);scene.add(mesh);shots.push({mesh,life:1.8});muzzle=.08;};
+    const resize=()=>{camera.aspect=host.clientWidth/host.clientHeight;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,host.clientHeight);};window.addEventListener("resize",resize);
+    const down=(e:KeyboardEvent)=>{keys.add(e.key.toLowerCase());if(e.key===" ")e.preventDefault();};const up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());window.addEventListener("keydown",down);window.addEventListener("keyup",up);
+    const pointer=(e:MouseEvent)=>{if(document.pointerLockElement===renderer.domElement){yaw-=e.movementX*.0022;pitch=THREE.MathUtils.clamp(pitch-e.movementY*.0018,-.55,.32);}};const click=()=>{if(runningRef.current&&!pausedRef.current)fireShot();else renderer.domElement.requestPointerLock?.();};renderer.domElement.addEventListener("click",click);document.addEventListener("mousemove",pointer);
+    const tick=(now:number)=>{const dt=Math.min((now-last)/1000,.04);last=now;
+      if(runningRef.current&&!pausedRef.current&&!overVal){const forward=(keys.has("w")||keys.has("arrowup")?1:0)-(keys.has("s")||keys.has("arrowdown")?1:0);const side=(keys.has("d")||keys.has("arrowright")?1:0)-(keys.has("a")||keys.has("arrowleft")?1:0);const speed=keys.has("shift")?9:5.4;const move=new THREE.Vector3(Math.sin(yaw)*forward+Math.cos(yaw)*side,0,-Math.cos(yaw)*forward+Math.sin(yaw)*side);if(move.lengthSq()>0){move.normalize().multiplyScalar(speed*dt);player.position.add(move);}player.position.x=THREE.MathUtils.clamp(player.position.x,-105,105);player.position.z=THREE.MathUtils.clamp(player.position.z,-105,105);player.rotation.y=yaw;
+        spawn-=dt;fire-=dt;if(spawn<=0){const angle=Math.random()*Math.PI*2;makeEnemy(player.position.x+Math.cos(angle)*(32+Math.random()*12),player.position.z+Math.sin(angle)*(32+Math.random()*12));spawn=Math.max(1.3,4.8-waveVal*.22);}
+        if(keys.has(" ")&&fire<=0){fireShot();fire=.18;}enemies.forEach(e=>{const dir=player.position.clone().sub(e.root.position);dir.y=0;const dist=dir.length();if(dist>1.6){dir.normalize();e.root.position.addScaledVector(dir,e.speed*dt);e.root.rotation.y=Math.atan2(dir.x,-dir.z);}else{hpVal-=13*dt;}});shots.forEach(s=>{s.life-=dt;});shots.forEach(s=>{const hit=enemies.findIndex(e=>e.root.position.distanceTo(s.mesh.position)<1.25);if(hit>=0){enemies[hit].hp--;s.life=0;if(enemies[hit].hp<=0){scene.remove(enemies[hit].root);enemies.splice(hit,1);killsVal++;scoreVal+=150;}}else if(s.life>0){const target=enemies[0];if(target){const d=target.root.position.clone().add(new THREE.Vector3(0,1.3,0)).sub(s.mesh.position);if(d.length()>.1)s.mesh.position.addScaledVector(d.normalize(),Math.min(32*dt,d.length()));}}});for(let i=shots.length-1;i>=0;i--)if(shots[i].life<=0){scene.remove(shots[i].mesh);shots.splice(i,1);}waveVal=1+Math.floor(killsVal/10);if(hpVal<=0){hpVal=0;overVal=true;runningRef.current=false;setRunning(false);setOver(true);}if(Math.floor(now/150)%2===0){setHp(Math.ceil(hpVal));setScore(scoreVal);setKills(killsVal);setWave(waveVal);}}
+      const camTarget=player.position.clone().add(new THREE.Vector3(Math.sin(yaw)*5,4.4,Math.cos(yaw)*5));camera.position.lerp(camTarget,.12);const look=player.position.clone().add(new THREE.Vector3(Math.sin(yaw)*-Math.sin(pitch)*20,2.2+pitch*10,-Math.cos(yaw)*-Math.sin(pitch)*20));camera.lookAt(look);renderer.render(scene,camera);requestAnimationFrame(tick);
+    };world.current={player,camera,renderer,scene,enemies,shots,keys,yaw,pitch,hp:hpVal,score:scoreVal,kills:killsVal,wave:waveVal,spawn,fire,last,running:false,paused:false,over:false,muzzle};const anim=requestAnimationFrame(tick);
+    return()=>{cancelAnimationFrame(anim);window.removeEventListener("resize",resize);window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);document.removeEventListener("mousemove",pointer);renderer.domElement.removeEventListener("click",click);document.exitPointerLock?.();renderer.dispose();host.removeChild(renderer.domElement);world.current=null;};
+  },[]);
+  return <main className="war-page war-3d"><header className="war-nav"><Link href="/" className="war-brand">✦ AY ZEK <b>ARENA</b></Link><Link href="/" className="war-back"><ArrowLeft size={15}/> Ana sayfa</Link></header>
+    <section className="war-hero"><div className="war-kicker"><Shield size={14}/> GERÇEK 3D · ÜÇÜNCÜ ŞAHIS · GÖREV 01</div><h1>CEPHE <em>HATTI</em></h1><p>Üç boyutlu savaş alanına gir. Birliğini yönet ve üs bölgesini savun.</p></section>
     <section className="war-layout"><div className="war-board"><div className="war-hud"><div><small><Heart size={12}/> SAĞLIK</small><b className={hp<35?"low":""}>{hp}%</b></div><div><small>SKOR</small><b>{score.toLocaleString("tr-TR")}</b></div><div><small>DALGA</small><b>{wave}</b></div><div><small><Target size={12}/> ETKİSİZ</small><b>{kills}</b></div></div>
-      <canvas ref={canvas} className="war-canvas" onPointerMove={aim} onPointerDown={fire} aria-label="Taktik savaş oyun alanı"/>
-      {!running&&<div className="war-start"><button onClick={start}><Crosshair size={17}/>{game.current.over?"YENİDEN BAŞLA":"GÖREVE BAŞLA"}</button></div>}
-      <div className="war-controls"><span>WASD / OKLAR: HAREKET</span><span>OTOMATİK ATEŞ</span><span>FARE / DOKUN: NİŞAN AL</span><button onClick={()=>setPaused(p=>!p)} disabled={!running}>{paused?"DEVAM ET":"DURAKLAT"}</button></div>
-    </div><aside className="war-info"><div className="war-card"><h2><Trophy size={17}/> GÖREV BRİFİNGİ</h2><p>Karşı birlikler bölgeye ilerliyor. Hareket halinde kal ve yaklaşmalarına izin verme.</p><div className="war-stat"><span>Görev</span><b>Bölge savunması</b></div><div className="war-stat"><span>Silah</span><b>Otomatik tüfek</b></div><div className="war-stat"><span>Tehdit</span><b>Artan düşman dalgaları</b></div></div><div className="war-card"><h2>TAKTİK ÖNERİLER</h2><p>• Sürekli hareket et, çevreni kontrol et.</p><p>• Her 8 düşmanda yeni dalga başlar.</p><p>• Düşmanlara çok yaklaşırsan sağlık kaybedersin.</p></div></aside></section>
-    <footer className="war-footer">Kurgusal, şiddetsiz grafiklere sahip arcade savaş oyunu · Ay Zek</footer>
+      <div className="war-three" ref={mount}><div className="war-crosshair">+</div>{!running&&<div className="war-overlay"><strong>{over?"GÖREV BAŞARISIZ":"CEPHE HATTI 3D"}</strong><span>{over?"Bir sonraki görev için yeniden hazırlan.":"Ormanlık savaş alanı seni bekliyor."}</span><button onClick={start}><Crosshair size={17}/>{over?"YENİDEN BAŞLA":"GÖREVE BAŞLA"}</button></div>}{running&&paused&&<div className="war-overlay"><strong>DURAKLATILDI</strong><button onClick={togglePause}><Play size={16}/> DEVAM ET</button></div>}</div>
+      <div className="war-controls"><span>WASD / OKLAR: HAREKET</span><span>SHIFT: KOŞ</span><span>FARE: KAMERA · BOŞLUK: ATEŞ</span><button onClick={togglePause} disabled={!running}>{paused?<Play size={13}/>:<Pause size={13}/>} {paused?"DEVAM ET":"DURAKLAT"}</button></div>
+    </div><aside className="war-info"><div className="war-card"><h2><Trophy size={17}/> GÖREV BRİFİNGİ</h2><p>Ormanlık üs bölgesinde düşman birlikleri yaklaşıyor. Kamerayı fareyle kontrol et ve onları durdur.</p><div className="war-stat"><span>Görünüm</span><b>3D üçüncü şahıs</b></div><div className="war-stat"><span>Silah</span><b>Hücum tüfeği</b></div><div className="war-stat"><span>Tehdit</span><b>Yaklaşan birlikler</b></div></div><div className="war-card"><h2>OYUN KONTROLLERİ</h2><p>• WASD ile hareket et.</p><p>• Fareyi hareket ettirerek kamerayı çevir.</p><p>• Boşluk tuşuyla ateş et.</p><p>• Shift ile koş.</p><p>• Oyuna tıklayarak fare kontrolünü etkinleştir.</p></div></aside></section>
+    <footer className="war-footer">Three.js ile gerçek zamanlı 3D · Ay Zek</footer>
   </main>;
 }
