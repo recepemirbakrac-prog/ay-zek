@@ -25,7 +25,7 @@ export default function AlienSurvival(){
   const start=useCallback(()=>{const c=canvas.current;if(!c)return;const w=makeWorld();w.px=c.clientWidth/2;w.py=c.clientHeight/2;world.current=w;setScore(0);setHp(100);setWave(1);setKills(0);setSaved(false);setPaused(false);setPlaying(true);},[]);
   const movePointer=useCallback((e:{clientX:number;clientY:number;currentTarget:HTMLCanvasElement})=>{if(!playing||paused)return;const r=e.currentTarget.getBoundingClientRect();world.current.px=clamp(e.clientX-r.left,15,r.width-15);world.current.py=clamp(e.clientY-r.top,15,r.height-15);},[playing,paused]);
 
-  useEffect(()=>{supabase.from("alien_scores").select("player_name,score,kills").order("score",{ascending:false}).limit(10).then(({data})=>{if(data)setLeaderboard(data as ScoreRow[])});},[]);
+  useEffect(()=>{supabase.from("zombie_scores").select("player_name,score,kills").order("score",{ascending:false}).limit(10).then(({data})=>{if(data)setLeaderboard(data as ScoreRow[])});},[]);
   useEffect(()=>{const down=(e:KeyboardEvent)=>{const k=e.key.toLowerCase();if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();keys.current[k]=true;};const up=(e:KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=false;};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up)};},[]);
 
   useEffect(()=>{
@@ -55,7 +55,7 @@ export default function AlienSurvival(){
     };raf=requestAnimationFrame(loop);return()=>{cancelAnimationFrame(raf);window.removeEventListener("resize",resize)};
   },[playing,paused]);
 
-  const saveScore=async()=>{const player=name.trim().slice(0,18);if(player.length<2)return;const {error}=await supabase.from("alien_scores").insert({player_name:player,score,kills});if(!error){setSaved(true);const {data}=await supabase.from("alien_scores").select("player_name,score,kills").order("score",{ascending:false}).limit(10);if(data)setLeaderboard(data as ScoreRow[])}};
+  const saveScore=async()=>{const player=name.trim().slice(0,18);if(player.length<2)return;const {error}=await supabase.from("zombie_scores").insert({player_name:player,score,kills});if(!error){setSaved(true);const {data}=await supabase.from("zombie_scores").select("player_name,score,kills").order("score",{ascending:false}).limit(10);if(data)setLeaderboard(data as ScoreRow[])}};
   const life=Math.max(0,hp);
   return <main className="alien-page">
     <header className="alien-nav"><Link href="/" className="alien-brand"><span>✦</span> AY ZEK <b>ARCADE</b></Link><Link href="/" className="alien-back"><ArrowLeft size={15}/> Ana sayfa</Link></header>
