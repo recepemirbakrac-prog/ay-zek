@@ -43,7 +43,6 @@ export default function SurvivalGame() {
 
   const stats=[{icon:"❤️",value:health,color:"#f05b69"},{icon:"🍖",value:hunger,color:"#e6b94e"},{icon:"💧",value:thirst,color:"#49c9e9"}];
   const styles = [
-      "*{box-sizin    <style jsx>{styles}</style>tyle jsx>{[
       "*{box-sizing:border-box}.survival{height:100svh;min-height:600px;overflow:hidden;position:relative;color:white;font-family:Arial,sans-serif;background:#1d2b24;isolation:isolate}",
       ".scene{position:absolute;inset:0;overflow:hidden;background:linear-gradient(180deg,#8999ad 0%,#b4ad9d 35%,#657653 57%,#333d2b 100%)}.scene.night{filter:brightness(.34) saturate(.75) hue-rotate(15deg)}",
       ".skyglow{position:absolute;top:-17%;left:18%;width:42vw;height:42vw;border-radius:50%;background:radial-gradient(circle,#fff6d9,transparent 70%);filter:blur(12px)}.mist{position:absolute;inset:25% -10% 24%;background:linear-gradient(90deg,transparent,#d6d2c477,transparent 48%,#d9d2bf66,transparent);filter:blur(22px)}",
@@ -58,8 +57,12 @@ export default function SurvivalGame() {
       ".right{position:absolute;right:28px;bottom:32px;display:grid;gap:10px;font-size:13px;font-weight:bold}.key{display:inline-grid;place-items:center;min-width:30px;height:30px;border:2px solid #ddd;border-radius:8px;background:#252522c9;margin-right:7px;color:white;padding:0 5px}.panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(390px,92vw);max-height:82vh;overflow:auto;padding:22px;background:#111a17f5;border:1px solid #ffffff66;border-radius:15px;box-shadow:0 20px 60px #000b;text-align:center}.panel p{color:#d5ddd3;font-size:13px;line-height:1.7}.panel button{background:#d6ad57;border:0;border-radius:8px;padding:10px 12px;font-weight:bold;margin:5px;color:#201a10}.panel button:disabled{opacity:.4}.panel .close{background:#53665a;color:white}.craftRow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #ffffff18;text-align:left;font-size:12px}.craftRow small{display:block;color:#9eaaa0;margin-top:4px}",
       ".zombie{position:absolute;left:50%;top:45%;font-size:42px;filter:drop-shadow(0 5px 6px #000);transform:translate(-50%,-50%);z-index:2}.zcount{position:absolute;top:90px;right:28px;background:#250f12cc;border:1px solid #f8717166;border-radius:9px;padding:8px 12px;font-size:12px}.touch{display:none;position:absolute;left:50%;bottom:105px;transform:translateX(-50%);gap:5px}",
       "@media(max-width:700px){.top{left:12px;right:12px;top:12px}.left{left:10px;bottom:94px;transform:scale(.68);transform-origin:left bottom}.right{right:8px;bottom:96px;font-size:10px;gap:5px}.bar{max-width:97vw;gap:2px;bottom:7px}.slot{height:54px;font-size:20px;width:8.7vw}.cabin{width:78vw;height:62vw;bottom:34%}.toast{top:14%;font-size:11px}.zcount{right:8px;top:86px}.touch{display:flex;bottom:70px;left:auto;right:8px;transform:none;flex-direction:column}.touch button{width:37px;height:37px}}"
-    ].join("")}</style>
-    <div className={"scene"+(night?" night":"")}><div className="skyglow"/><div className="mist"/><div className="ridge"/>
+    ].join("");
+
+  return (
+    <main className="survival">
+      <style jsx>{styles}</style>
+      <div className={"scene"+(night?" night":"")}><div className="skyglow"/><div className="mist"/><div className="ridge"/>
       <div className="forest" style={{"--x":x,"--z":z} as React.CSSProperties}>{Array.from({length:7},(_,i)=><div className="tree" key={i}><div className="crown"/><div className="trunk"/></div>)}</div>
       <div className="ground"/><div className="path"/><div className="cabin" style={{"--x":x,"--z":z} as React.CSSProperties}><div className="roof"/><div className="logs"><div className="window"/><div className="door"/></div></div>
       {zombies.slice(0,2).map((enemy,i)=><div key={enemy.id} className="zombie" style={{left:"calc(50% + "+((enemy.x-x)*18)+"px)",top:"calc(45% + "+((enemy.z-z)*12)+"px)",transform:"translate(-50%,-50%)"} as React.CSSProperties}>{i===0?"🧟":"🧟‍♂️"}</div>)}
