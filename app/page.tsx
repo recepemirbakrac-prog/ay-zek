@@ -18,7 +18,7 @@ const tools = [
   { title: "Yıldız Koşusu", desc: "Yıldızları topla, göktaşlarından kaç ve rekorunu kır.", icon: Sparkles, href: "/yildiz-kosusu", tag: "Yeni oyun", tone: "cyan" },
   { title: "Virüs Avcısı Oyunu", desc: "Sanal virüslerden kaç, panzehirleri topla ve ağı kurtar.", icon: ShieldCheck, href: "/virus-game", tag: "Oyun", tone: "green" },
   { title: "Virüs Simülatörü", desc: "Virüslerin sanal cihazlarda nasıl yayıldığını keşfet.", icon: ShieldCheck, href: "/virus-simulator", tag: "Eğitim", tone: "cyan" },
-  { title: "Son Savunma", desc: "Uzaylı istilasına karşı savaş, galaksiyi savun ve rekorunu kır.", icon: ShieldCheck, href: "/oyun", tag: "Yeni oyun", tone: "green" },
+  { title: "Cephe Hattı", desc: "Askerini yönet, düşman birliklerini durdur ve cepheyi savun.", icon: ShieldCheck, href: "/savas", tag: "Yeni savaş oyunu", tone: "green" },
   { title: "Ay Zek Mağaza", desc: "Uygulamaları keşfet ve bilgisayarına yükle.", icon: Download, href: "/magaza", tag: "Mağaza", tone: "blue" }
 ];
 
