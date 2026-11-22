@@ -41,6 +41,8 @@ export default function SocialPage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [signup, setSignup] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
   const [content, setContent] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
@@ -143,16 +145,61 @@ export default function SocialPage() {
 
 
 
+  async function resendSignupCode() {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.resend({ type: "signup", email: cleanEmail });
+      if (error) {
+        if (/already confirmed|user is already confirmed/i.test(error.message)) {
+          setNotice("Bu e-posta adresi zaten doğrulanmış. Yeni hesap açmak yerine Giriş yap sekmesini kullan.");
+        } else {
+          throw error;
+        }
+      } else {
+        setConfirmationPending(true);
+        setNotice("Doğrulama e-postası yeniden gönderildi. Gelen kutunu ve spam klasörünü kontrol et.");
+      }
+    } catch (e: any) { setNotice(e.message || "Doğrulama e-postası gönderilemedi."); }
+    finally { setBusy(false); }
+  }
+
+  async function verifySignupCode() {
+    const cleanEmail = email.trim().toLowerCase();
+    const token = emailCode.trim();
+    if (!cleanEmail || token.length < 6 || busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.verifyOtp({ type: "email", email: cleanEmail, token });
+      if (error) throw error;
+      setConfirmationPending(false);
+      setEmailCode("");
+      setNotice("E-posta doğrulandı. Hesabın açıldı.");
+    } catch (e: any) { setNotice(e.message || "Kod doğrulanamadı."); }
+    finally { setBusy(false); }
+  }
+
   async function authenticate() {
     setBusy(true); setNotice("");
     try {
       if (signup) {
+        const cleanEmail = email.trim().toLowerCase();
         const cleanUsername = username.trim();
-        const { error } = await supabase.auth.signUp({ email, password, options: { data: { username: cleanUsername, display_name: displayName || cleanUsername } } });
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: { data: { username: cleanUsername, display_name: displayName.trim() || cleanUsername } }
+        });
         if (error) throw error;
-        setNotice("Hesap oluşturuldu. E-posta doğrulaması istenirse gelen kutunu kontrol et.");
+        if (data.session) {
+          setNotice("Hesabın oluşturuldu ve giriş yaptın.");
+        } else {
+          setConfirmationPending(true);
+          setNotice("Doğrulama e-postası gönderilmesi istendi. Gelen kutunu ve spam klasörünü kontrol et. Kod gelmezse aşağıdan tekrar gönder.");
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) throw error;
       }
     } catch (e: any) { setNotice(e.message || "Bir hata oluştu."); }
@@ -223,7 +270,8 @@ export default function SocialPage() {
         <label>E-posta</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="ornek@mail.com" autoComplete="email"/>
         <label>Şifre</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="En az 6 karakter" autoComplete={signup ? "new-password" : "current-password"}/>
         <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>
-        <button className="switch-auth" onClick={()=>{setSignup(!signup);setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>
+        {signup && confirmationPending && <div className="verify-panel"><label>E-posta doğrulama kodu</label><input inputMode="numeric" autoComplete="one-time-code" value={emailCode} onChange={e=>setEmailCode(e.target.value.replace(/\\D/g, "").slice(0,8))} placeholder="E-postadaki kodu gir"/><button className="primary-btn auth-submit" disabled={busy || emailCode.trim().length < 6} onClick={verifySignupCode}>Kodu doğrula</button><button className="switch-auth" disabled={busy} onClick={resendSignupCode}>Doğrulama kodunu tekrar gönder</button></div>}
+        <button className="switch-auth" onClick={()=>{setSignup(!signup);setConfirmationPending(false);setEmailCode("");setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>
         {notice && <p className="notice">{notice}</p>}
         <small>Devam ederek topluluk kurallarını kabul etmiş olursun.</small>
       </section>
