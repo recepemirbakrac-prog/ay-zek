@@ -242,7 +242,7 @@ export default function SocialPage() {
           <div className="side-user"><div className="avatar large">{initials(profile?.display_name || profile?.username)}</div><div><strong>{profile?.display_name || profile?.username}</strong><span>@{profile?.username}</span></div></div>
           <button className={tab==="feed"?"nav-active":""} onClick={()=>setTab("feed")}><Home size={19}/> Ana sayfa</button>
           <button className={tab==="explore"?"nav-active":""} onClick={()=>setTab("explore")}><Compass size={19}/> Keşfet</button>
-          <button className={tab==="messages"?"nav-active":""} onClick={()=>{setTab("messages");if(people.length && !selectedRecipient)setSelectedRecipient(people[0].user_id);}}><MessageCircle size={19}/> Mesajlar</button>
+          <button className={tab==="messages"?"nav-active":""} onClick={()=>{setTab("messages");const target=selectedRecipient || people[0]?.user_id || "";if(target){setSelectedRecipient(target);loadDirectMessages(target);}}}><MessageCircle size={19}/> Mesajlar</button>
           <button className={tab==="profile"?"nav-active":""} onClick={()=>setTab("profile")}><UserRound size={19}/> Profilim</button>
           <div className="sidebar-bottom"><div className="side-note"><Sparkles size={17}/><span>Paylaş, keşfet,<br/>bağlantıda kal.</span></div><button onClick={()=>supabase.auth.signOut()}><LogOut size={18}/> Çıkış yap</button></div>
         </aside>
@@ -279,7 +279,7 @@ export default function SocialPage() {
 
         <aside className="social-right"><div className="right-card"><div className="right-title"><Users size={17}/> Önerilen kişiler</div>{people.slice(0,5).map(p=><div className="suggestion" key={p.user_id}><div className="avatar small">{initials(p.display_name || p.username)}</div><div><b>{p.display_name || p.username}</b><span>@{p.username}</span></div><button onClick={()=>toggleFollow(p.user_id)}>{following.includes(p.user_id)?"✓":"+"}</button></div>)}{people.length===0&&<p className="muted">Yeni üyeler burada görünecek.</p>}<button className="see-all" onClick={()=>setTab("explore")}>Tümünü keşfet</button></div><div className="right-footer">Ay Zek Sosyal · 2026<br/>Güvenli ve saygılı bir topluluk.</div></aside>
       </div>
-      <nav className="mobile-nav"><button className={tab==="feed"?"selected":""} onClick={()=>setTab("feed")}><Home/></button><button className={tab==="explore"?"selected":""} onClick={()=>setTab("explore")}><Compass/></button><button className={tab==="messages"?"selected":""} onClick={()=>{setTab("messages");if(people.length&&!selectedRecipient){setSelectedRecipient(people[0].user_id);loadDirectMessages(people[0].user_id);}}}><MessageCircle/></button><button className={tab==="profile"?"selected":""} onClick={()=>setTab("profile")}><UserRound/></button><button onClick={()=>supabase.auth.signOut()}><LogOut/></button></nav>
+      <nav className="mobile-nav"><button className={tab==="feed"?"selected":""} onClick={()=>setTab("feed")}><Home/></button><button className={tab==="explore"?"selected":""} onClick={()=>setTab("explore")}><Compass/></button><button className={tab==="messages"?"selected":""} onClick={()=>{setTab("messages");const target=selectedRecipient || people[0]?.user_id || "";if(target){setSelectedRecipient(target);loadDirectMessages(target);}}}><MessageCircle/></button><button className={tab==="profile"?"selected":""} onClick={()=>setTab("profile")}><UserRound/></button><button onClick={()=>supabase.auth.signOut()}><LogOut/></button></nav>
     </main>
   );
 }
