@@ -7,7 +7,8 @@ export default function OyunPage() {
   const g = useRef({ lane: 1, items: [] as Item[], tick: 0, score: 0, speed: 4, live: false, last: 0, raf: 0 });
   const [state, setState] = useState<"ready" | "playing" | "over">("ready");
   const [score, setScore] = useState(0);
-  const [best, setBest] = useState(0);\n  const shownScore = useRef(-1);
+  const [best, setBest] = useState(0);
+  const shownScore = useRef(-1);
   useEffect(() => { setBest(Number(localStorage.getItem("ay-neon-best") || 0)); }, []);
   const move = useCallback((d: number) => { if (g.current.live) g.current.lane = Math.max(0, Math.min(2, g.current.lane + d)); }, []);
   const start = useCallback(() => { Object.assign(g.current, { lane: 1, items: [], tick: 0, score: 0, speed: 4, live: true, last: 0 }); setScore(0); shownScore.current = 0; setState("playing"); }, []);
