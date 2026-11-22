@@ -43,6 +43,8 @@ export default function SocialPage() {
   const [signup, setSignup] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
   const [emailCode, setEmailCode] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [content, setContent] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
@@ -100,7 +102,8 @@ export default function SocialPage() {
       if (u) loadProfile(u);
       setAuthReady(true);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
       const u = session?.user || null; setUser(u);
       if (u) setTimeout(() => loadProfile(u), 0); else { setProfile(null); setPosts([]); }
     });
@@ -178,6 +181,39 @@ export default function SocialPage() {
       setNotice("E-posta doğrulandı. Hesabın açıldı.");
     } catch (e: any) { setNotice(e.message || "Kod doğrulanamadı."); }
     finally { setBusy(false); }
+  }
+
+  async function sendPasswordReset() {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: window.location.origin + "/sosyal"
+      });
+      if (error) throw error;
+      setNotice("Şifre yenileme bağlantısı istendi. E-posta gelen kutunu ve spam klasörünü kontrol et.");
+    } catch (e: any) {
+      setNotice(e.message || "Şifre yenileme e-postası gönderilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveNewPassword() {
+    if (newPassword.length < 6 || busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setRecoveryMode(false);
+      setNewPassword("");
+      setNotice("Şifren yenilendi. Artık yeni şifrenle giriş yapabilirsin.");
+    } catch (e: any) {
+      setNotice(e.message || "Şifre güncellenemedi.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function authenticate() {
@@ -268,10 +304,14 @@ export default function SocialPage() {
         <p className="auth-copy">Arkadaşlarını keşfet, anılarını paylaş ve topluluğa katıl.</p>
         {signup && <><label>Kullanıcı adı</label><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Kullanıcı adın"/><label>Görünen ad</label><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Adın"/></>}
         <label>E-posta</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="ornek@mail.com" autoComplete="email"/>
-        <label>Şifre</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="En az 6 karakter" autoComplete={signup ? "new-password" : "current-password"}/>
-        <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>
+        {!recoveryMode ? <><label>Şifre</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="En az 6 karakter" autoComplete={signup ? "new-password" : "current-password"}/></> : <><label>Yeni şifre</label><input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="Yeni şifren (en az 6 karakter)" autoComplete="new-password"/></>}
+        {recoveryMode
+          ? <button className="primary-btn auth-submit" disabled={busy || newPassword.length < 6} onClick={saveNewPassword}>{busy ? <LoaderCircle className="spin"/> : null}Yeni şifreyi kaydet</button>
+          : <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>}
         {signup && confirmationPending && <div className="verify-panel"><label>E-posta doğrulama kodu</label><input inputMode="numeric" autoComplete="one-time-code" value={emailCode} onChange={e=>setEmailCode(e.target.value.replace(/\D/g, "").slice(0,8))} placeholder="E-postadaki kodu gir"/><button className="primary-btn auth-submit" disabled={busy || emailCode.trim().length < 6} onClick={verifySignupCode}>Kodu doğrula</button><button className="switch-auth" disabled={busy} onClick={resendSignupCode}>Doğrulama kodunu tekrar gönder</button></div>}
-        <button className="switch-auth" onClick={()=>{setSignup(!signup);setConfirmationPending(false);setEmailCode("");setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>
+        {!recoveryMode && !signup && <button className="switch-auth" disabled={busy || !email.trim()} onClick={sendPasswordReset}>Şifremi unuttum</button>}
+        {!recoveryMode && <button className="switch-auth" onClick={()=>{setSignup(!signup);setConfirmationPending(false);setEmailCode("");setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>}
+        {recoveryMode && <button className="switch-auth" onClick={()=>{setRecoveryMode(false);setNewPassword("");setNotice("");}}>Giriş ekranına dön</button>}
         {notice && <p className="notice">{notice}</p>}
         <small>Devam ederek topluluk kurallarını kabul etmiş olursun.</small>
       </section>
