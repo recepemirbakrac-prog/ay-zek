@@ -14,6 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 type Profile = { user_id: string; username: string; display_name?: string; bio?: string; avatar_url?: string | null };
 type Comment = { id: string; post_id: string; user_id: string; content: string; created_at: string };
+type DirectMessage = { id: string; sender_id: string; recipient_id: string; body: string; created_at: string };
 type Post = { id: string; user_id: string; content: string; image_url: string | null; created_at: string; profile?: Profile; likes: string[]; comments: (Comment & { profile?: Profile })[] };
 
 function initials(name = "A") { return name.slice(0, 1).toUpperCase(); }
@@ -30,7 +31,10 @@ export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [people, setPeople] = useState<Profile[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
-  const [tab, setTab] = useState<"feed" | "explore" | "profile">("feed");
+  const [tab, setTab] = useState<"feed" | "explore" | "profile" | "messages">("feed");
+  const [selectedRecipient, setSelectedRecipient] = useState("");
+  const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
+  const [messageDraft, setMessageDraft] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -113,6 +117,31 @@ export default function SocialPage() {
   }, [user, loadFeed]);
 
   const filteredPeople = useMemo(() => people.filter(p => (p.username + " " + (p.display_name || "")).toLowerCase().includes(search.toLowerCase())), [people, search]);
+
+  async function loadDirectMessages(recipientId: string) {
+    if (!user || !recipientId) { setDirectMessages([]); return; }
+    const [sent, received] = await Promise.all([
+      supabase.from("direct_messages").select("*").eq("sender_id", user.id).eq("recipient_id", recipientId),
+      supabase.from("direct_messages").select("*").eq("sender_id", recipientId).eq("recipient_id", user.id)
+    ]);
+    if (sent.error || received.error) { setNotice((sent.error || received.error)!.message); return; }
+    setDirectMessages([...(sent.data || []), ...(received.data || [])].sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) as DirectMessage[]);
+  }
+
+  async function sendDirectMessage() {
+    const body = messageDraft.trim();
+    if (!user || !selectedRecipient || !body || busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.from("direct_messages").insert({ sender_id: user.id, recipient_id: selectedRecipient, body });
+      if (error) throw error;
+      setMessageDraft("");
+      await loadDirectMessages(selectedRecipient);
+    } catch (e: any) { setNotice(e.message || "Mesaj gönderilemedi."); }
+    finally { setBusy(false); }
+  }
+
+
 
   async function authenticate() {
     setBusy(true); setNotice("");
@@ -213,6 +242,7 @@ export default function SocialPage() {
           <div className="side-user"><div className="avatar large">{initials(profile?.display_name || profile?.username)}</div><div><strong>{profile?.display_name || profile?.username}</strong><span>@{profile?.username}</span></div></div>
           <button className={tab==="feed"?"nav-active":""} onClick={()=>setTab("feed")}><Home size={19}/> Ana sayfa</button>
           <button className={tab==="explore"?"nav-active":""} onClick={()=>setTab("explore")}><Compass size={19}/> Keşfet</button>
+          <button className={tab==="messages"?"nav-active":""} onClick={()=>{setTab("messages");if(people.length && !selectedRecipient)setSelectedRecipient(people[0].user_id);}}><MessageCircle size={19}/> Mesajlar</button>
           <button className={tab==="profile"?"nav-active":""} onClick={()=>setTab("profile")}><UserRound size={19}/> Profilim</button>
           <div className="sidebar-bottom"><div className="side-note"><Sparkles size={17}/><span>Paylaş, keşfet,<br/>bağlantıda kal.</span></div><button onClick={()=>supabase.auth.signOut()}><LogOut size={18}/> Çıkış yap</button></div>
         </aside>
@@ -239,6 +269,8 @@ export default function SocialPage() {
             </div>
           </>}
 
+          {tab==="messages" && <><div className="page-heading"><div><span className="eyebrow">ÖZEL SOHBETLER</span><h1>Mesajlar</h1><p>Arkadaşlarınla birebir konuş.</p></div></div><div className="dm-layout"><div className="dm-people">{people.map(p=><button key={p.user_id} className={selectedRecipient===p.user_id?"dm-person active":"dm-person"} onClick={()=>{setSelectedRecipient(p.user_id);loadDirectMessages(p.user_id);}}><span className="avatar">{initials(p.display_name || p.username)}</span><span><b>{p.display_name || p.username}</b><small>@{p.username}</small></span></button>)}{people.length===0&&<p className="muted">Mesajlaşmak için henüz başka üye yok.</p>}</div><div className="dm-chat">{selectedRecipient ? <><div className="dm-chat-head">{people.find(p=>p.user_id===selectedRecipient)?.display_name || people.find(p=>p.user_id===selectedRecipient)?.username || "Sohbet"}</div><div className="dm-thread">{directMessages.map(m=><div key={m.id} className={m.sender_id===user.id?"dm-bubble mine":"dm-bubble"}><p>{m.body}</p><small>{new Date(m.created_at).toLocaleString("tr-TR",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"short"})}</small></div>)}{directMessages.length===0&&<div className="dm-empty">Henüz mesaj yok. İlk mesajı sen gönder!</div>}</div><form className="dm-compose" onSubmit={e=>{e.preventDefault();sendDirectMessage();}}><input value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Mesajını yaz…" maxLength={4000}/><button className="primary-btn" disabled={busy || !messageDraft.trim()} type="submit">{busy?"Gönderiliyor…": "Gönder"}</button></form></> : <div className="dm-empty">Mesaj göndermek için soldan bir kişi seç.</div>}</div></div></>}
+
           {tab==="explore" && <><div className="page-heading"><div><span className="eyebrow">YENİ BAĞLANTILAR</span><h1>Keşfet</h1><p>Topluluktaki insanlarla tanış.</p></div></div><div className="explore-search"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="İsim veya kullanıcı adı ara…"/></div><div className="people-grid">{filteredPeople.map(p=><article className="person-card" key={p.user_id}><div className="avatar xl">{initials(p.display_name || p.username)}</div><strong>{p.display_name || p.username}</strong><span>@{p.username}</span><p>{p.bio || "Ay Zek Sosyal topluluğunda."}</p><button className={following.includes(p.user_id)?"follow-btn following":"follow-btn"} onClick={()=>toggleFollow(p.user_id)}>{following.includes(p.user_id)?"Takip ediliyor":"Takip et"}</button></article>)}</div>{filteredPeople.length===0&&<div className="empty-state">Henüz başka üye yok. Arkadaşlarını davet et!</div>}</>}
 
           {tab==="profile" && <><div className="page-heading"><div><span className="eyebrow">KİŞİSEL ALANIN</span><h1>Profilim</h1><p>Topluluğa kendini tanıt.</p></div></div><div className="profile-panel"><div className="profile-cover"/><div className="profile-info"><div className="avatar profile-avatar">{initials(displayName || username)}</div><strong>{profile?.display_name || profile?.username}</strong><span>@{profile?.username}</span><div className="profile-stats"><span><b>{posts.filter(p=>p.user_id===user.id).length}</b> gönderi</span><span><b>{following.length}</b> takip</span></div></div><div className="profile-edit"><label>Görünen ad</label><input value={displayName} onChange={e=>setDisplayName(e.target.value)} maxLength={40}/><label>Hakkımda</label><textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={160} placeholder="Kendinden biraz bahset…"/><button className="primary-btn" onClick={saveProfile}>Profili kaydet</button></div></div></>}
@@ -247,7 +279,7 @@ export default function SocialPage() {
 
         <aside className="social-right"><div className="right-card"><div className="right-title"><Users size={17}/> Önerilen kişiler</div>{people.slice(0,5).map(p=><div className="suggestion" key={p.user_id}><div className="avatar small">{initials(p.display_name || p.username)}</div><div><b>{p.display_name || p.username}</b><span>@{p.username}</span></div><button onClick={()=>toggleFollow(p.user_id)}>{following.includes(p.user_id)?"✓":"+"}</button></div>)}{people.length===0&&<p className="muted">Yeni üyeler burada görünecek.</p>}<button className="see-all" onClick={()=>setTab("explore")}>Tümünü keşfet</button></div><div className="right-footer">Ay Zek Sosyal · 2026<br/>Güvenli ve saygılı bir topluluk.</div></aside>
       </div>
-      <nav className="mobile-nav"><button className={tab==="feed"?"selected":""} onClick={()=>setTab("feed")}><Home/></button><button className={tab==="explore"?"selected":""} onClick={()=>setTab("explore")}><Compass/></button><button className={tab==="profile"?"selected":""} onClick={()=>setTab("profile")}><UserRound/></button><button onClick={()=>supabase.auth.signOut()}><LogOut/></button></nav>
+      <nav className="mobile-nav"><button className={tab==="feed"?"selected":""} onClick={()=>setTab("feed")}><Home/></button><button className={tab==="explore"?"selected":""} onClick={()=>setTab("explore")}><Compass/></button><button className={tab==="messages"?"selected":""} onClick={()=>{setTab("messages");if(people.length&&!selectedRecipient){setSelectedRecipient(people[0].user_id);loadDirectMessages(people[0].user_id);}}}><MessageCircle/></button><button className={tab==="profile"?"selected":""} onClick={()=>setTab("profile")}><UserRound/></button><button onClick={()=>supabase.auth.signOut()}><LogOut/></button></nav>
     </main>
   );
 }
