@@ -19,6 +19,7 @@ const tools = [
   { title: "Virüs Avcısı Oyunu", desc: "Sanal virüslerden kaç, panzehirleri topla ve ağı kurtar.", icon: ShieldCheck, href: "/virus-game", tag: "Oyun", tone: "green" },
   { title: "Virüs Simülatörü", desc: "Virüslerin sanal cihazlarda nasıl yayıldığını keşfet.", icon: ShieldCheck, href: "/virus-simulator", tag: "Eğitim", tone: "cyan" },
   { title: "Cephe Hattı", desc: "Askerini yönet, düşman birliklerini durdur ve cepheyi savun.", icon: ShieldCheck, href: "/savas", tag: "Yeni savaş oyunu", tone: "green" },
+  { title: "Ay Zek Uzak Destek", desc: "İzinli bilgisayar bağlantısı ve güvenli uzaktan yardım.", icon: ShieldCheck, href: "/uzak-destek", tag: "Yeni araç", tone: "violet" },
   { title: "Ay Zek Mağaza", desc: "Uygulamaları keşfet ve bilgisayarına yükle.", icon: Download, href: "/magaza", tag: "Mağaza", tone: "blue" }
 ];
 
