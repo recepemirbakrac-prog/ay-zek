@@ -114,6 +114,20 @@ export default function SocialPage() {
 
   const filteredPeople = useMemo(() => people.filter(p => (p.username + " " + (p.display_name || "")).toLowerCase().includes(search.toLowerCase())), [people, search]);
 
+  async function signInWithGoogle() {
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin + "/sosyal" }
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      setNotice(e.message || "Google ile giriş başlatılamadı.");
+      setBusy(false);
+    }
+  }
+
   async function authenticate() {
     setBusy(true); setNotice("");
     try {
@@ -194,6 +208,11 @@ export default function SocialPage() {
         <label>E-posta</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="ornek@mail.com" autoComplete="email"/>
         <label>Şifre</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="En az 6 karakter" autoComplete={signup ? "new-password" : "current-password"}/>
         <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>
+        <div className="auth-divider"><span>veya</span></div>
+        <button className="google-auth-btn" disabled={busy} onClick={signInWithGoogle}>
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.24 5.48-4.7 7.18l7.2 5.59c4.2-3.88 7.54-9.59 7.54-17.24Z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.2A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19Z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.79l-7.2-5.59c-2 1.35-4.56 2.16-8.71 2.16-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z"/></svg>
+          Google ile devam et
+        </button>
         <button className="switch-auth" onClick={()=>{setSignup(!signup);setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>
         {notice && <p className="notice">{notice}</p>}
         <small>Devam ederek topluluk kurallarını kabul etmiş olursun.</small>
