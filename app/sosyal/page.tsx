@@ -51,7 +51,8 @@ export default function SocialPage() {
       const p = data as Profile;
       setProfile(p); setUsername(p.username); setDisplayName(p.display_name || p.username); setBio(p.bio || "");
     } else {
-      const handle = (String(u.user_metadata?.username || u.email?.split("@")[0] || "ayzek").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || "ayzek").padEnd(3, "0");
+      const rawHandle = String(u.user_metadata?.username || u.email?.split("@")[0] || "ayzek").trim();
+      const handle = (rawHandle.slice(0, 20) || "ayzek").padEnd(3, "0");
       const { data: created } = await supabase.from("profiles").insert({ user_id: u.id, username: handle, display_name: String(u.user_metadata?.display_name || handle) }).select().single();
       if (created) setProfile(created as Profile);
     }
@@ -117,8 +118,9 @@ export default function SocialPage() {
     setBusy(true); setNotice("");
     try {
       if (signup) {
-        if (!/^[a-z0-9_]{3,20}$/.test(username)) throw new Error("Kullanıcı adı 3–20 karakter olmalı; küçük harf, rakam ve _ kullan.");
-        const { error } = await supabase.auth.signUp({ email, password, options: { data: { username, display_name: displayName || username } } });
+        const cleanUsername = username.trim();
+        if (cleanUsername.length < 3 || cleanUsername.length > 20) throw new Error("Kullanıcı adı 3–20 karakter arasında olmalı.");
+        const { error } = await supabase.auth.signUp({ email, password, options: { data: { username: cleanUsername, display_name: displayName || cleanUsername } } });
         if (error) throw error;
         setNotice("Hesap oluşturuldu. E-posta doğrulaması istenirse gelen kutunu kontrol et.");
       } else {
@@ -189,7 +191,7 @@ export default function SocialPage() {
         <div className="auth-kicker"><Sparkles size={15} /> YENİ NESİL SOSYAL AĞ</div>
         <h1>Bağlantıda kal.<br/><span>Paylaşmaya başla.</span></h1>
         <p className="auth-copy">Arkadaşlarını keşfet, anılarını paylaş ve topluluğa katıl.</p>
-        {signup && <><label>Kullanıcı adı</label><input value={username} onChange={e=>setUsername(e.target.value.toLowerCase())} placeholder="kullanici_adi" maxLength={20}/><label>Görünen ad</label><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Adın"/></>}
+        {signup && <><label>Kullanıcı adı</label><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="kullanici_adi" maxLength={20}/><label>Görünen ad</label><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="Adın"/></>}
         <label>E-posta</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="ornek@mail.com" autoComplete="email"/>
         <label>Şifre</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="En az 6 karakter" autoComplete={signup ? "new-password" : "current-password"}/>
         <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>
