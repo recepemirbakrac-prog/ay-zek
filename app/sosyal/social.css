@@ -25,3 +25,8 @@
 .auth-divider{display:flex;align-items:center;gap:12px;color:#777184;font-size:10px;margin:17px 0 12px}.auth-divider:before,.auth-divider:after{content:"";height:1px;flex:1;background:#ffffff18}
 .google-auth-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:11px;padding:12px;border:1px solid #ffffff22;border-radius:10px;background:#fff;color:#24212b;font:700 12px 'DM Sans';cursor:pointer;transition:background .2s,transform .2s}
 .google-auth-btn:hover{background:#f1eff5;transform:translateY(-1px)}.google-auth-btn:disabled{opacity:.55;cursor:wait;transform:none}.google-auth-btn svg{width:18px;height:18px;flex:none}
+
+.github-auth-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:11px;padding:12px;margin-top:10px;border:1px solid #ffffff25;border-radius:10px;background:#24232b;color:#fff;font:700 12px 'DM Sans';cursor:pointer;transition:background .2s,transform .2s}
+.github-auth-btn:hover{background:#33313d;transform:translateY(-1px)}
+.github-auth-btn:disabled{opacity:.55;cursor:wait;transform:none}
+.github-auth-btn svg{width:18px;height:18px;flex:none}
