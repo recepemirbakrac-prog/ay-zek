@@ -55,6 +55,15 @@ export default function SocialPage() {
     const { data } = await supabase.from("profiles").select("*").eq("user_id", u.id).maybeSingle();
     if (data) {
       const p = data as Profile;
+      const fallbackHandle = String(u.user_metadata?.username || u.email?.split("@")[0] || "ayzek").trim() || "ayzek";
+      if (!p.username) {
+        const { data: repaired } = await supabase.from("profiles").update({
+          username: fallbackHandle,
+          display_name: p.display_name || String(u.user_metadata?.display_name || fallbackHandle)
+        }).eq("user_id", u.id).select().single();
+        if (repaired) Object.assign(p, repaired);
+        else p.username = fallbackHandle;
+      }
       setProfile(p); setUsername(p.username); setDisplayName(p.display_name || p.username); setBio(p.bio || "");
     } else {
       const rawHandle = String(u.user_metadata?.username || u.email?.split("@")[0] || "ayzek").trim();
@@ -200,7 +209,15 @@ export default function SocialPage() {
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) throw error;
       }
-    } catch (e: any) { setNotice(e.message || "Bir hata oluştu."); }
+    } catch (e: any) {
+      const message = String(e?.message || "");
+      if (/already registered|user already exists|already been registered/i.test(message)) {
+        setSignup(false);
+        setNotice("Bu e-posta zaten kayıtlı. Giriş yap bölümüne geçtim; aynı e-posta ve şifrenle giriş yap. Kullanıcı adın giriş yaptıktan sonra profilinde görünür.");
+      } else {
+        setNotice(message || "Bir hata oluştu.");
+      }
+    }
     finally { setBusy(false); }
   }
 
