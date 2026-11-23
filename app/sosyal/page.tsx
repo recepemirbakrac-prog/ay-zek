@@ -155,23 +155,6 @@ export default function SocialPage() {
 
 
 
-  async function sendPasswordReset() {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || busy) return;
-    setBusy(true); setNotice("");
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: window.location.origin + "/sosyal"
-      });
-      if (error) throw error;
-      setNotice("Şifre yenileme bağlantısı istendi. E-posta gelen kutunu ve spam klasörünü kontrol et.");
-    } catch (e: any) {
-      setNotice(e.message || "Şifre yenileme e-postası gönderilemedi.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function saveNewPassword() {
     if (newPassword.length < 6 || busy) return;
     setBusy(true); setNotice("");
@@ -288,7 +271,6 @@ export default function SocialPage() {
           ? <button className="primary-btn auth-submit" disabled={busy || newPassword.length < 6} onClick={saveNewPassword}>{busy ? <LoaderCircle className="spin"/> : null}Yeni şifreyi kaydet</button>
           : <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>}
 
-        {!recoveryMode && !signup && <button className="switch-auth" disabled={busy || !email.trim()} onClick={sendPasswordReset}>Şifremi unuttum</button>}
         {!recoveryMode && <button className="switch-auth" onClick={()=>{setSignup(!signup);setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>}
         {recoveryMode && <button className="switch-auth" onClick={()=>{setRecoveryMode(false);setNewPassword("");setNotice("");}}>Giriş ekranına dön</button>}
         {notice && <p className="notice">{notice}</p>}
