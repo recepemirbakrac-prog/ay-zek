@@ -171,6 +171,22 @@ export default function SocialPage() {
     }
   }
 
+  async function sendLoginLink() {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || busy) return;
+    setBusy(true); setNotice("");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/sosyal" : undefined, shouldCreateUser: false }
+      });
+      if (error) throw error;
+      setNotice("Giriş bağlantısı e-posta adresine gönderildi. Gelen kutunu ve spam klasörünü kontrol et; bağlantıya tıklayınca hesabın açılacak. Şifren değişmeyecek.");
+    } catch (e: any) {
+      setNotice(e.message || "Giriş bağlantısı gönderilemedi.");
+    } finally { setBusy(false); }
+  }
+
   async function authenticate() {
     setBusy(true); setNotice("");
     try {
@@ -271,7 +287,10 @@ export default function SocialPage() {
           ? <button className="primary-btn auth-submit" disabled={busy || newPassword.length < 6} onClick={saveNewPassword}>{busy ? <LoaderCircle className="spin"/> : null}Yeni şifreyi kaydet</button>
           : <button className="primary-btn auth-submit" disabled={busy || !email || password.length < 6} onClick={authenticate}>{busy ? <LoaderCircle className="spin"/> : null}{signup ? "Hesap oluştur" : "Giriş yap"}</button>}
 
-        {!recoveryMode && <button className="switch-auth" onClick={()=>{setSignup(!signup);setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>}
+        {!recoveryMode && <>
+          <button className="switch-auth" onClick={()=>{setSignup(!signup);setNotice("");}}>{signup ? "Zaten hesabın var mı? Giriş yap" : "Yeni misin? Hesap oluştur"}</button>
+          {!signup && <button className="switch-auth" disabled={busy || !email.trim()} onClick={sendLoginLink}>Şifre kullanmadan e-posta ile giriş yap</button>}
+        </>}
         {recoveryMode && <button className="switch-auth" onClick={()=>{setRecoveryMode(false);setNewPassword("");setNotice("");}}>Giriş ekranına dön</button>}
         {notice && <p className="notice">{notice}</p>}
         <small>Devam ederek topluluk kurallarını kabul etmiş olursun.</small>
