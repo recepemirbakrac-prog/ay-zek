@@ -178,7 +178,7 @@ export default function SocialPage() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
-        options: { emailRedirectTo: typeof window !== "undefined" ? window.location.origin + "/sosyal" : undefined, shouldCreateUser: false }
+        options: { emailRedirectTo: "https://ay-zek.vercel.app/sosyal", shouldCreateUser: false }
       });
       if (error) throw error;
       setNotice("Giriş bağlantısı e-posta adresine gönderildi. Gelen kutunu ve spam klasörünü kontrol et; bağlantıya tıklayınca hesabın açılacak. Şifren değişmeyecek.");
